@@ -10,20 +10,20 @@ RUN apk add --no-cache \
     git \
     oniguruma-dev \
     libpq-dev \
-    && docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd
+    $PHPIZE_DEPS \
+    && docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && apk del $PHPIZE_DEPS
 
-# Установка Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-# Копируем манифесты зависимостей
 COPY composer.json composer.lock* ./
 
-# Устанавливаем зависимости с отключением скриптов на этапе сборки
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
-# Копируем весь исходный код проекта
 COPY . .
 
 # Выставляем права на папки для записи

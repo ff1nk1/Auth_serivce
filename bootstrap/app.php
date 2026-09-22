@@ -8,6 +8,10 @@ use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use App\Http\Middleware\HandleInertiaRequests;
 
+use PHPOpenSourceSaver\JWTAuth\Http\Middleware\Authenticate as JwtAuthenticate;
+use PHPOpenSourceSaver\JWTAuth\Http\Middleware\CheckBlacklist as JwtCheckBlacklist;
+use PHPOpenSourceSaver\JWTAuth\Http\Middleware\RefreshToken as JwtRefreshToken;
+
 
 
 
@@ -26,6 +30,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             HandleInertiaRequests::class,
+        ]);
+        $middleware->alias([
+            'jwt.auth'      => JwtAuthenticate::class,
+            'jwt.refresh'   => JwtRefreshToken::class,
         ]);
     })
 
