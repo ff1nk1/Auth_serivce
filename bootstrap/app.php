@@ -4,6 +4,12 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use App\Http\Middleware\RoleMiddleware;
+use Illuminate\Auth\AuthenticationException;
+use App\Http\Middleware\HandleInertiaRequests;
+
+
+
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,10 +18,27 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        $middleware->preventRequestForgery(except: [ // убрать в проде
+            'login',
+        ]);
+        $middleware->alias([
+        'role' => RoleMiddleware::class,
+        ]);
+        $middleware->web(append: [
+            HandleInertiaRequests::class,
+        ]);
     })
+
+    
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
-        );
+    $exceptions->render(function (
+        AuthenticationException $e,
+        Request $request
+    ) {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+    });
     })->create();

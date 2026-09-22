@@ -1,0 +1,43 @@
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: laravel_db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-laravel}
+      POSTGRES_USER: ${DB_USERNAME:-laravel}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+
+  vite:
+    image: node:22
+    working_dir: /var/www
+    volumes:
+    - ./:/var/www
+    ports:
+    - "5173:5173"
+    command: npm run dev -- --host 0.0.0.0
+
+
+volumes:
+  pgdata:
