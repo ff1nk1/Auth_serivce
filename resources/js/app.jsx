@@ -1,4 +1,5 @@
 import '../css/app.css'
+import './auth/inertiaAuth';
 
 import { createRoot } from 'react-dom/client'
 import { createInertiaApp } from '@inertiajs/react'

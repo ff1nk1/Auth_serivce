@@ -16,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Auth::viaRequest('jwt', function (Request $request) {
+        Auth::viaRequest('jwt-cookie', function (Request $request) {
             return app(JwtService::class)
                 ->userFromRequest($request);
         });

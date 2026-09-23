@@ -7,9 +7,9 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\JwtService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -25,21 +25,33 @@ class AuthController extends Controller
         return Inertia::render('Registration');
     }
 
+    public function login_page()
+    {
+        return Inertia::render('Login');
+    }
+
     public function registration(RegistrationRequest $request)
     {
-        $user_data = $request->validated();
+        $userData = $request->validated();
 
-        $user_data['password'] = Hash::make($user_data['password']);
+        $userData['password'] = Hash::make($userData['password']);
 
-        $roleId = Role::where('slug', 'customer')->valueOrFail('id');
+        $roleId = Role::where('slug', 'customer')
+            ->valueOrFail('id');
 
-        $user_data['role_id'] = $roleId;
+        $userData['role_id'] = $roleId;
 
-        $user = User::create($user_data);
+        $user = User::create($userData);
 
         return response()->json($user, 201);
     }
 
+    /**
+     * Вход.
+     *
+     * Access и refresh токены не возвращаем в JSON.
+     * Они устанавливаются как HttpOnly cookies.
+     */
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -47,154 +59,304 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        $user = User::where('email', $credentials['email'])->first();
+        $user = User::where(
+            'email',
+            $credentials['email']
+        )->first();
 
         if (
             !$user ||
-            !Hash::check($credentials['password'], $user->password)
+            !Hash::check(
+                $credentials['password'],
+                $user->password
+            )
         ) {
             throw ValidationException::withMessages([
                 'email' => ['Неверный логин или пароль.'],
             ]);
         }
 
-        $access_token = $this->jwtService->createAccessToken($user);
+        /*
+         * Создаём access JWT.
+         */
+        $accessToken = $this->jwtService
+            ->createAccessToken($user);
 
-        $refresh_token = bin2hex(random_bytes(64));
+        /*
+         * Создаём refresh token.
+         */
+        $refreshToken = bin2hex(
+            random_bytes(64)
+        );
 
-        $tokenHash = hash('sha256', $refresh_token);
+        /*
+         * В Redis сохраняем только hash refresh token.
+         */
+        $refreshHash = hash(
+            'sha256',
+            $refreshToken
+        );
 
-        $refreshTtl = (int) config('jwt.refresh_ttl');
+        $refreshTtl = (int) config(
+            'jwt.refresh_ttl'
+        );
 
         Redis::setex(
-            "refresh_token:{$tokenHash}",
+            "refresh_token:{$refreshHash}",
             $refreshTtl,
             $user->id
         );
 
-        return response()->json([
-            'access_token' => $access_token,
-            'refresh_token' => $refresh_token,
-            'token_type' => 'bearer',
-            'expires_in' => (int) config('jwt.ttl') * 60,
-            'refresh_expires_in' => $refreshTtl,
-        ]);
+        return $this->tokenResponse(
+            $accessToken,
+            $refreshToken
+        );
     }
 
-    public function logout(Request $request)
-{
-    // Инвалидируем access token
-    $accessToken = $request->bearerToken();
+    /**
+     * Обновление access + refresh токенов.
+     *
+     * Refresh token берём из HttpOnly cookie.
+     */
+    public function refresh(Request $request)
+    {
+        $oldRefreshToken = $request->cookie(
+            'refresh_token'
+        );
 
-    if ($accessToken) {
-        $this->jwtService->revokeToken($accessToken);
-    }
+        if (!$oldRefreshToken) {
+            return response()->json([
+                'message' => 'Недействительный refresh-токен.',
+            ], 401);
+        }
 
-    // Инвалидируем refresh token
-    if ($request->filled('refresh_token')) {
-        $refreshToken = $request->string('refresh_token')->toString();
+        $oldHash = hash(
+            'sha256',
+            $oldRefreshToken
+        );
 
-        $hash = hash('sha256', $refreshToken);
+        $oldKey = "refresh_token:{$oldHash}";
 
-        $key = "refresh_token:{$hash}";
-        $blacklistKey = "refresh_token:blacklist:{$hash}";
+        $blacklistKey =
+            "refresh_token:blacklist:{$oldHash}";
 
-        $ttl = Redis::ttl($key);
+        /*
+         * Refresh token уже был использован
+         * или отозван.
+         */
+        if (Redis::exists($blacklistKey)) {
+            return response()->json([
+                'message' => 'Недействительный refresh-токен.',
+            ], 401);
+        }
 
-        if ($ttl > 0) {
+        /*
+         * Получаем user_id из Redis.
+         */
+        $userId = Redis::get($oldKey);
+
+        if (!$userId) {
+            return response()->json([
+                'message' => 'Недействительный refresh-токен.',
+            ], 401);
+        }
+
+        /*
+         * Получаем пользователя.
+         */
+        $user = User::find($userId);
+
+        if (!$user) {
+            Redis::del($oldKey);
+
+            return response()->json([
+                'message' => 'Пользователь не найден.',
+            ], 401);
+        }
+
+        /*
+         * Получаем оставшийся TTL старого refresh token.
+         */
+        $oldTtl = Redis::ttl($oldKey);
+
+        /*
+         * Старый refresh token отправляем в blacklist.
+         */
+        if ($oldTtl > 0) {
             Redis::setex(
                 $blacklistKey,
-                $ttl,
+                $oldTtl,
                 '1'
             );
         }
 
-        Redis::del($key);
-    }
-
-    return response()->json([
-        'message' => 'Выход выполнен',
-    ]);
-}
-    public function refresh(Request $request)
-{
-    $request->validate([
-        'refresh_token' => ['required', 'string'],
-    ]);
-
-    $oldRefreshToken = $request->string('refresh_token')->toString();
-    $oldHash = hash('sha256', $oldRefreshToken);
-
-    $oldKey = "refresh_token:{$oldHash}";
-    $blacklistKey = "refresh_token:blacklist:{$oldHash}";
-
-    // Refresh token уже использовался или был отозван
-    if (Redis::exists($blacklistKey)) {
-        throw ValidationException::withMessages([
-            'refresh_token' => ['Недействительный refresh-токен.'],
-        ]);
-    }
-
-    $userId = Redis::get($oldKey);
-
-    if (!$userId) {
-        throw ValidationException::withMessages([
-            'refresh_token' => ['Недействительный refresh-токен.'],
-        ]);
-    }
-
-    $user = User::find($userId);
-
-    if (!$user) {
+        /*
+         * Удаляем старый активный refresh token.
+         */
         Redis::del($oldKey);
 
-        throw ValidationException::withMessages([
-            'refresh_token' => ['Пользователь не найден.'],
+        /*
+         * Новый access token.
+         */
+        $accessToken = $this->jwtService
+            ->createAccessToken($user);
+
+        /*
+         * Новый refresh token.
+         */
+        $refreshToken = bin2hex(
+            random_bytes(64)
+        );
+
+        $newHash = hash(
+            'sha256',
+            $refreshToken
+        );
+
+        $refreshTtl = (int) config(
+            'jwt.refresh_ttl'
+        );
+
+        Redis::setex(
+            "refresh_token:{$newHash}",
+            $refreshTtl,
+            $user->id
+        );
+
+        return $this->tokenResponse(
+            $accessToken,
+            $refreshToken
+        );
+    }
+
+    /**
+     * Logout.
+     */
+    public function logout(Request $request)
+    {
+        /*
+         * Access token теперь берём из cookie.
+         *
+         * JwtService также поддерживает Bearer fallback,
+         * поэтому при необходимости старые API-клиенты
+         * продолжат работать.
+         */
+        $accessToken = $request->cookie(
+            'access_token'
+        );
+
+        if ($accessToken) {
+            $this->jwtService
+                ->revokeToken($accessToken);
+        }
+
+        /*
+         * Refresh token берём из cookie.
+         */
+        $refreshToken = $request->cookie(
+            'refresh_token'
+        );
+
+        if ($refreshToken) {
+            $hash = hash(
+                'sha256',
+                $refreshToken
+            );
+
+            $key = "refresh_token:{$hash}";
+
+            $blacklistKey =
+                "refresh_token:blacklist:{$hash}";
+
+            $ttl = Redis::ttl($key);
+
+            if ($ttl > 0) {
+                Redis::setex(
+                    $blacklistKey,
+                    $ttl,
+                    '1'
+                );
+            }
+
+            Redis::del($key);
+        }
+
+        /*
+         * Удаляем cookies из браузера.
+         */
+        return response()->json([
+            'message' => 'Выход выполнен.',
+        ])
+            ->withoutCookie('access_token')
+            ->withoutCookie('refresh_token');
+    }
+
+    /**
+     * Профиль текущего пользователя.
+     *
+     * Должен вызываться после auth:api.
+     */
+    public function profile()
+    {
+        $user = Auth::guard('api')->user();
+
+        return Inertia::render('Profile', [
+            'user' => $user,
         ]);
     }
 
-    // Сохраняем оставшийся TTL старого refresh token
-    $oldTtl = Redis::ttl($oldKey);
-
-    // Переносим старый refresh token в blacklist
-    if ($oldTtl > 0) {
-        Redis::setex(
-            $blacklistKey,
-            $oldTtl,
-            '1'
+    /**
+     * Единое место для установки access / refresh cookies.
+     */
+    private function tokenResponse(
+        string $accessToken,
+        string $refreshToken
+    ) {
+        $accessMinutes = (int) config(
+            'jwt.ttl',
+            15
         );
-    }
 
-    // Удаляем старый активный refresh token
-    Redis::del($oldKey);
-
-    // Новый access token
-    $accessToken = $this->jwtService->createAccessToken($user);
-
-    // Новый refresh token
-    $refreshToken = bin2hex(random_bytes(64));
-    $newHash = hash('sha256', $refreshToken);
-
-    $refreshTtl = (int) config('jwt.refresh_ttl');
-
-    Redis::setex(
-        "refresh_token:{$newHash}",
-        $refreshTtl,
-        $user->id
-    );
-
-    return response()->json([
-        'access_token' => $accessToken,
-        'refresh_token' => $refreshToken,
-        'token_type' => 'bearer',
-        'expires_in' => (int) config('jwt.ttl') * 60,
-        'refresh_expires_in' => $refreshTtl,
-    ]);
-}
-    public function me()
-    {
-        return response()->json(
-            Auth::guard('api')->user()
+        $refreshTtl = (int) config(
+            'jwt.refresh_ttl'
         );
+
+        $refreshMinutes = (int) ceil(
+            $refreshTtl / 60
+        );
+
+        /*
+         * В локальной разработке false,
+         * в production true.
+         */
+        $secure = app()->environment(
+            'production'
+        );
+
+        return response()->json([
+            'message' => 'Успешно.',
+        ])
+            ->cookie(
+                'access_token',
+                $accessToken,
+                $accessMinutes,
+                '/',
+                null,
+                $secure,
+                true,
+                false,
+                'lax'
+            )
+            ->cookie(
+                'refresh_token',
+                $refreshToken,
+                $refreshMinutes,
+                '/',
+                null,
+                $secure,
+                true,
+                false,
+                'lax'
+            );
     }
 }

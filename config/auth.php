@@ -43,9 +43,8 @@ return [
             'provider' => 'users',
         ],
         'api' => [
-        'driver' => 'jwt',
+        'driver' => 'jwt-cookie',
         'provider' => 'users',
-        'ttl' => 15,
         ],
     ],
 

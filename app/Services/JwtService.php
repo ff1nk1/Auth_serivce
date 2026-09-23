@@ -61,62 +61,37 @@ class JwtService
     /**
      * Получить User из Authorization: Bearer ...
      */
-    public function userFromRequest(Request $request): ?User
-    {
-        $token = $request->bearerToken();
+public function userFromRequest(Request $request): ?User
+{
+    // Сначала пробуем взять JWT из HttpOnly cookie.
+    // Если cookie нет — поддерживаем старый Bearer header.
+    $token = $request->cookie('access_token')
+        ?? $request->bearerToken();
 
-        if (!$token) {
+    if (!$token) {
+        return null;
+    }
+
+    try {
+        $payload = $this->decode($token);
+
+        if (
+            !isset($payload->sub) ||
+            !isset($payload->jti)
+        ) {
             return null;
         }
 
-        try {
-            $payload = $this->decode($token);
+        $blacklistKey = "jwt:blacklist:{$payload->jti}";
 
-            if (
-                !isset($payload->sub) ||
-                !isset($payload->jti)
-            ) {
-                return null;
-            }
-
-            $blacklistKey = "jwt:blacklist:{$payload->jti}";
-
-            if (Redis::exists($blacklistKey)) {
-                return null;
-            }
-
-            return User::find($payload->sub);
-        } catch (Throwable) {
+        if (Redis::exists($blacklistKey)) {
             return null;
         }
+
+        return User::find($payload->sub);
+
+    } catch (Throwable) {
+        return null;
     }
-
-    /**
-     * Инвалидировать access token через blacklist.
-     */
-    public function revokeToken(string $token): void
-    {
-        try {
-            $payload = $this->decode($token);
-
-            if (!isset($payload->jti, $payload->exp)) {
-                return;
-            }
-
-            $ttl = (int) $payload->exp - time();
-
-            if ($ttl <= 0) {
-                return;
-            }
-
-            Redis::setex(
-                "jwt:blacklist:{$payload->jti}",
-                $ttl,
-                '1'
-            );
-        } catch (Throwable) {
-            // Токен уже невалиден/истёк —
-            // отдельно инвалидировать нечего.
-        }
-    }
+}
 }
