@@ -13,6 +13,9 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/login', function () {abort(403);});
     Route::post('/refresh', [AuthController::class,'refresh']);
+    Route::post('/registration',[AuthController::class,'registration']);
+    Route::get('/registration',[AuthController::class,'registration_page']);
+
 });
 
 
