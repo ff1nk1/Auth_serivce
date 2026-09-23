@@ -1,19 +1,14 @@
 <?php
 
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\JwtRefreshMiddleware;
+use App\Http\Middleware\RoleMiddleware;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use App\Http\Middleware\RoleMiddleware;
-use Illuminate\Auth\AuthenticationException;
-use App\Http\Middleware\HandleInertiaRequests;
-
-use PHPOpenSourceSaver\JWTAuth\Http\Middleware\Authenticate as JwtAuthenticate;
-use PHPOpenSourceSaver\JWTAuth\Http\Middleware\CheckBlacklist as JwtCheckBlacklist;
-use PHPOpenSourceSaver\JWTAuth\Http\Middleware\RefreshToken as JwtRefreshToken;
-use App\Http\Middleware\JwtRefreshMiddleware;
-
-
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -22,31 +17,40 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->preventRequestForgery(except: [ // убрать в проде
+        $middleware->preventRequestForgery(except: [
             'login',
+            'refresh',
         ]);
+
         $middleware->alias([
-        'role' => RoleMiddleware::class,
+            'role' => RoleMiddleware::class,
+            'jwt.refresh' => JwtRefreshMiddleware::class,
         ]);
+
         $middleware->web(append: [
             HandleInertiaRequests::class,
         ]);
-        $middleware->alias([
-        'role' => RoleMiddleware::class,
-        'jwt.refresh' => JwtRefreshMiddleware::class,
-    ]);
+
+        /*
+     * jwt.refresh должен выполняться ДО auth:api.
+     * Иначе Laravel сортирует auth выше по приоритету,
+     * и при протухшем токене наш middleware вообще не запустится.
+     */
+        $middleware->prependToPriorityList(
+            AuthenticatesRequests::class,
+            JwtRefreshMiddleware::class,
+        );
     })
 
-    
     ->withExceptions(function (Exceptions $exceptions): void {
-    $exceptions->render(function (
-        AuthenticationException $e,
-        Request $request
-    ) {
-        if ($request->expectsJson()) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
-        }
-    });
+        $exceptions->render(function (
+            AuthenticationException $e,
+            Request $request
+        ) {
+            if ($request->expectsJson() || $request->header('X-Inertia')) {
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+        });
     })->create();

@@ -12,13 +12,13 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
-
+//./vendor/bin/pint --test
+//./vendor/bin/pint
 class AuthController extends Controller
 {
     public function __construct(
         private JwtService $jwtService
-    ) {
-    }
+    ) {}
 
     public function registration_page()
     {
@@ -65,8 +65,8 @@ class AuthController extends Controller
         )->first();
 
         if (
-            !$user ||
-            !Hash::check(
+            ! $user ||
+            ! Hash::check(
                 $credentials['password'],
                 $user->password
             )
@@ -124,7 +124,7 @@ class AuthController extends Controller
             'refresh_token'
         );
 
-        if (!$oldRefreshToken) {
+        if (! $oldRefreshToken) {
             return response()->json([
                 'message' => 'Недействительный refresh-токен.',
             ], 401);
@@ -155,7 +155,7 @@ class AuthController extends Controller
          */
         $userId = Redis::get($oldKey);
 
-        if (!$userId) {
+        if (! $userId) {
             return response()->json([
                 'message' => 'Недействительный refresh-токен.',
             ], 401);
@@ -166,7 +166,7 @@ class AuthController extends Controller
          */
         $user = User::find($userId);
 
-        if (!$user) {
+        if (! $user) {
             Redis::del($oldKey);
 
             return response()->json([
@@ -305,33 +305,15 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Единое место для установки access / refresh cookies.
-     */
     private function tokenResponse(
         string $accessToken,
         string $refreshToken
     ) {
-        $accessMinutes = (int) config(
-            'jwt.ttl',
-            15
-        );
+        $refreshTtl = (int) config('jwt.refresh_ttl');
 
-        $refreshTtl = (int) config(
-            'jwt.refresh_ttl'
-        );
+        $cookieMinutes = (int) ceil($refreshTtl / 60);
 
-        $refreshMinutes = (int) ceil(
-            $refreshTtl / 60
-        );
-
-        /*
-         * В локальной разработке false,
-         * в production true.
-         */
-        $secure = app()->environment(
-            'production'
-        );
+        $secure = app()->environment('production');
 
         return response()->json([
             'message' => 'Успешно.',
@@ -339,7 +321,7 @@ class AuthController extends Controller
             ->cookie(
                 'access_token',
                 $accessToken,
-                $accessMinutes,
+                $cookieMinutes,
                 '/',
                 null,
                 $secure,
@@ -350,7 +332,7 @@ class AuthController extends Controller
             ->cookie(
                 'refresh_token',
                 $refreshToken,
-                $refreshMinutes,
+                $cookieMinutes,
                 '/',
                 null,
                 $secure,

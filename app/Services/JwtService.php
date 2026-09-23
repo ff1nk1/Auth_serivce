@@ -12,7 +12,9 @@ use Throwable;
 class JwtService
 {
     private string $secret;
+
     private string $algorithm;
+
     private int $ttl;
 
     public function __construct()
@@ -61,37 +63,73 @@ class JwtService
     /**
      * Получить User из Authorization: Bearer ...
      */
-public function userFromRequest(Request $request): ?User
-{
-    // Сначала пробуем взять JWT из HttpOnly cookie.
-    // Если cookie нет — поддерживаем старый Bearer header.
-    $token = $request->cookie('access_token')
-        ?? $request->bearerToken();
+    public function userFromRequest(Request $request): ?User
+    {
+        $token = $request->cookie('access_token') ?? $request->bearerToken();
 
-    if (!$token) {
-        return null;
-    }
-
-    try {
-        $payload = $this->decode($token);
-
-        if (
-            !isset($payload->sub) ||
-            !isset($payload->jti)
-        ) {
+        if (! $token) {
             return null;
         }
 
-        $blacklistKey = "jwt:blacklist:{$payload->jti}";
+        try {
+            $payload = $this->decode($token);
 
-        if (Redis::exists($blacklistKey)) {
+            if (! isset($payload->sub) || ! isset($payload->jti)) {
+                return null;
+            }
+
+            $blacklistKey = "jwt:blacklist:{$payload->jti}";
+            $isBlacklisted = Redis::exists($blacklistKey);
+
+            if ($isBlacklisted) {
+                return null;
+            }
+
+            $user = User::find($payload->sub);
+
+            return $user;
+        } catch (Throwable $e) {
+
             return null;
         }
-
-        return User::find($payload->sub);
-
-    } catch (Throwable) {
-        return null;
     }
-}
+
+    /**
+     * Помещает access-токен в blacklist по его jti.
+     *
+     * TTL blacklist-записи = оставшееся время жизни токена.
+     * Как только токен сам истечёт — запись исчезнет из Redis.
+     */
+    public function revokeToken(string $token): void
+    {
+        try {
+            $payload = $this->decode($token);
+
+            if (! isset($payload->jti) || ! isset($payload->exp)) {
+                return;
+            }
+
+            $now = time();
+            $remainingTtl = $payload->exp - $now;
+
+            /*
+             * Токен уже истёк — блэклистить нечего,
+             * он и так никого не пустит.
+             */
+            if ($remainingTtl <= 0) {
+                return;
+            }
+
+            Redis::setex(
+                "jwt:blacklist:{$payload->jti}",
+                $remainingTtl,
+                '1'
+            );
+        } catch (Throwable) {
+            /*
+             * Битый токен — блэклистить нечего.
+             * Просто молча выходим.
+             */
+        }
+    }
 }

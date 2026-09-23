@@ -27,5 +27,5 @@ return [
     | JWT algorithm
     |--------------------------------------------------------------------------
     */
-    'algorithm' => env('JWT_ALGO')
+    'algorithm' => env('JWT_ALGO'),
 ];

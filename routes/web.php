@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AdminController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -12,14 +12,11 @@ Route::get('/', function () {
 Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/login', [AuthController::class, 'login_page'])->name('login');
-    Route::post('/registration',[AuthController::class,'registration']);
-    Route::get('/registration',[AuthController::class,'registration_page']);
-
+    Route::post('/registration', [AuthController::class, 'registration']);
+    Route::get('/registration', [AuthController::class, 'registration_page']);
 
 });
-Route::post('/refresh', [AuthController::class,'refresh']);
-
-
+Route::post('/refresh', [AuthController::class, 'refresh']);
 
 Route::middleware([
     'jwt.refresh',
@@ -28,7 +25,6 @@ Route::middleware([
 ])->group(function () {
     Route::get('/admin', [AdminController::class, 'index']);
 });
-
 
 // 2. Защищенные маршруты (доступны ТОЛЬКО после входа)
 Route::middleware(['jwt.refresh', 'auth:api'])->group(function () {

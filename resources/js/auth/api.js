@@ -38,7 +38,6 @@ api.interceptors.response.use(
          */
         if (originalRequest._retry) {
             window.location.href = '/login'
-
             throw error
         }
 

@@ -2,21 +2,22 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Services\JwtService;
 use Closure;
-use Firebase\JWT\ExpiredException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\User;
 use Throwable;
 
 class JwtRefreshMiddleware
 {
     public function __construct(
         private JwtService $jwtService
-    ) {
-    }
+    ) {}
 
     public function handle(
         Request $request,
@@ -24,16 +25,12 @@ class JwtRefreshMiddleware
     ): Response {
         $accessToken = $request->cookie('access_token');
         $refreshToken = $request->cookie('refresh_token');
-        \Log::info('JWT REFRESH START', [
-        'has_access' => !empty($accessToken),
-        'has_refresh' => !empty($refreshToken),
-        ]);
-    
+
         /*
-         * Если access cookie отсутствует, но refresh есть,
-         * тоже пытаемся восстановить access.
+         * Access cookie отсутствует, но refresh есть —
+         * пытаемся восстановить access.
          */
-        if (!$accessToken && $refreshToken) {
+        if (! $accessToken && $refreshToken) {
             return $this->refreshAndContinue(
                 $request,
                 $next,
@@ -42,42 +39,36 @@ class JwtRefreshMiddleware
         }
 
         /*
-         * Если access есть — проверяем, истёк ли он.
+         * Access есть — проверяем, валиден ли он.
          */
         if ($accessToken) {
             try {
-                $this->jwtService->decode($accessToken);
+                $payload = $this->jwtService->decode($accessToken);
 
                 /*
-                 * Access token валиден.
-                 * Ничего делать не нужно.
+                 * Access token валиден — пропускаем дальше.
                  */
                 return $next($request);
 
-            } catch (ExpiredException) {
+            } catch (Throwable $e) {
+
                 /*
-                 * Access token именно истёк.
+                 * Токен невалиден (истёк, повреждён, не та подпись —
+                 * всё равно нужно обновить). Пробуем refresh.
                  */
-                
                 if ($refreshToken) {
-                    \Log::info('JWT REFRESH: trying refresh');
+
                     return $this->refreshAndContinue(
                         $request,
                         $next,
                         $refreshToken
                     );
                 }
-
-            } catch (Throwable) {
-                /*
-                 * Повреждённый JWT, неправильная подпись
-                 * и т.п. — refresh автоматически не делаем.
-                 */
             }
         }
 
         /*
-         * Пусть auth:api уже вернёт 401.
+         * Ни access, ни refresh — пусть auth:api вернёт 401/302.
          */
         return $next($request);
     }
@@ -87,18 +78,17 @@ class JwtRefreshMiddleware
         Closure $next,
         string $oldRefreshToken
     ): Response {
-        $oldHash = hash(
-            'sha256',
-            $oldRefreshToken
-        );
 
+        $oldHash = hash('sha256', $oldRefreshToken);
         $oldKey = "refresh_token:{$oldHash}";
         $blacklistKey = "refresh_token:blacklist:{$oldHash}";
 
         /*
-         * Refresh token уже был использован.
+         * Refresh token уже использован (reuse detection).
          */
         if (Redis::exists($blacklistKey)) {
+            Log::warning('JWT REFRESH: refresh token is blacklisted');
+
             return $next($request);
         }
 
@@ -107,26 +97,25 @@ class JwtRefreshMiddleware
          */
         $userId = Redis::get($oldKey);
 
-        if (!$userId) {
+        if (! $userId) {
+
             return $next($request);
         }
 
         $user = User::find($userId);
 
-        if (!$user) {
+        if (! $user) {
+
             Redis::del($oldKey);
 
             return $next($request);
         }
 
         /*
-         * TTL старого refresh token.
+         * TTL старого refresh token — чтобы blacklist жил столько же.
          */
         $oldTtl = Redis::ttl($oldKey);
 
-        /*
-         * Старый refresh token -> blacklist.
-         */
         if ($oldTtl > 0) {
             Redis::setex(
                 $blacklistKey,
@@ -141,26 +130,21 @@ class JwtRefreshMiddleware
         Redis::del($oldKey);
 
         /*
-         * Создаём новый access token.
+         * Новый access JWT.
          */
         $newAccessToken = $this->jwtService
             ->createAccessToken($user);
 
         /*
-         * Создаём новый refresh token.
+         * Новый refresh token.
          */
         $newRefreshToken = bin2hex(
             random_bytes(64)
         );
 
-        $newHash = hash(
-            'sha256',
-            $newRefreshToken
-        );
+        $newHash = hash('sha256', $newRefreshToken);
 
-        $refreshTtl = (int) config(
-            'jwt.refresh_ttl'
-        );
+        $refreshTtl = (int) config('jwt.refresh_ttl');
 
         Redis::setex(
             "refresh_token:{$newHash}",
@@ -168,15 +152,6 @@ class JwtRefreshMiddleware
             $user->id
         );
 
-        /*
-         * КРИТИЧЕСКИЙ МОМЕНТ:
-         *
-         * auth:api будет выполняться ПОСЛЕ этого middleware.
-         *
-         * Поэтому надо изменить cookie прямо
-         * в текущем Request, чтобы auth:api увидел
-         * уже новый access token.
-         */
         $request->cookies->set(
             'access_token',
             $newAccessToken
@@ -188,43 +163,43 @@ class JwtRefreshMiddleware
         );
 
         /*
-         * Передаём запрос дальше.
+         * И сбрасываем кэш guard'ов, если кто-то до нас уже
+         * дёрнул auth()->user() (например, HandleInertiaRequests).
+         * Иначе auth:api вернёт закешированный null.
+         */
+        Auth::forgetGuards();
+
+        /*
+         * Пропускаем запрос дальше — теперь уже с новым токеном.
          */
         $response = $next($request);
 
         /*
-         * А теперь обновляем реальные cookies
-         * в браузере.
+         * Ставим новые cookies в очередь.
+         *
+         * Cookie::queue() работает с ЛЮБЫМ ответом, включая
+         * Inertia\Response, у которого нет метода ->cookie().
          */
-        $accessMinutes = (int) config(
-            'jwt.ttl',
-            15
-        );
+        $cookieAccessMinutes = (int) ceil($refreshTtl / 60);
+        $cookieRefreshMinutes = (int) ceil($refreshTtl / 60);
+        $secure = app()->environment('production');
 
-        $refreshMinutes = (int) ceil(
-            $refreshTtl / 60
-        );
-
-        $secure = app()->environment(
-            'production'
-        );
-
-        $response->cookie(
+        Cookie::queue(
             'access_token',
             $newAccessToken,
-            $accessMinutes,
+            $cookieAccessMinutes,
             '/',
             null,
             $secure,
-            true,
-            false,
-            'lax'
+            true,   // httpOnly
+            false,  // raw
+            'lax'   // sameSite
         );
 
-        $response->cookie(
+        Cookie::queue(
             'refresh_token',
             $newRefreshToken,
-            $refreshMinutes,
+            $cookieRefreshMinutes,
             '/',
             null,
             $secure,

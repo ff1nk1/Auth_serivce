@@ -15,11 +15,11 @@ class RoleMiddleware
     ): Response {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             abort(401);
         }
 
-       if (!\in_array($user->role?->slug, $roles, true)) {
+        if (! \in_array($user->role?->slug, $roles, true)) {
             abort(403);
         }
 
