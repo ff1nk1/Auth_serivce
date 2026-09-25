@@ -2,7 +2,7 @@
 
 namespace App\Providers;
 
-use App\Services\JwtService;
+use App\Services\Auth\JwtService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;

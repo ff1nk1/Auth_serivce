@@ -60,6 +60,11 @@ services:
     ports:
       - "5173:5173"
     command: npm run dev -- --host 0.0.0.0
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025" # SMTP-порт
+      - "8025:8025" # Web-интерфейс
 
 volumes:
   pgdata:
