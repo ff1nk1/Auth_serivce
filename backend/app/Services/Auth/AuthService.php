@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
 
 class AuthService
 {
@@ -50,9 +51,12 @@ class AuthService
      */
     public function refreshTokens(?string $oldRefreshToken): ?array
     {
+        Log::debug("Начали refreshTokens");
+
         if (! $oldRefreshToken) {
             return null;
         }
+        Log::debug("! oldRefreshToken - норм");
 
         $oldHash = hash('sha256', $oldRefreshToken);
         $oldKey = "refresh_token:{$oldHash}";
@@ -62,17 +66,23 @@ class AuthService
         if (Redis::exists($blacklistKey)) {
             return null;
         }
+        Log::debug("Не в блэклисте");
+
 
         $userId = Redis::get($oldKey);
         if (! $userId) {
             return null;
         }
+        Log::debug("есть айди пользователя в редисе");
+
 
         $user = User::find($userId);
         if (! $user) {
             Redis::del($oldKey);
             return null;
         }
+        Log::debug("есть пользователь по поиску в бд");
+
 
         // Отправляем старый токен в blacklist
         $oldTtl = Redis::ttl($oldKey);

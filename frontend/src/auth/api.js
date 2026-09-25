@@ -1,71 +1,79 @@
+// api.js
 import axios from 'axios'
 import { refreshSession } from './auth'
 
 export const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || '',
-    headers: {
-        Accept: 'application/json',
-    },
-
+    headers: { Accept: 'application/json' },
     withCredentials: true,
-
-    xsrfCookieName: 'XSRF-TOKEN',
-    xsrfHeaderName: 'X-XSRF-TOKEN',
-    withXSRFToken: true,
 })
 
+// Флаг-блокировка: идет ли сейчас процесс рефреша?
+let isRefreshing = false;
+// Очередь для запросов, которые получили 401, пока шел рефреш
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
 api.interceptors.response.use(
-    (response) => {
-        return response
-    },
-
+    (response) => response,
     async (error) => {
-        const originalRequest = error.config
+        const originalRequest = error.config;
 
-        /*
-         * Нас интересует только 401 ошибка.
-         */
-        if (
-            error.response?.status !== 401 ||
-            !originalRequest
-        ) {
-            throw error
+        // Если это не 401 или запрос уже повторяли — прокидываем ошибку дальше
+        if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
+            return Promise.reject(error);
         }
 
-        /*
-         * Уже пытались повторить этот запрос.
-         * Значит refresh больше не помог, выбрасываем на логин.
-         */
-        if (originalRequest._retry) {
-            window.location.href = '/login'
-            throw error
+        // Если рефреш УЖЕ ИДЕТ, ставим этот (второй/третий) запрос в очередь
+        if (isRefreshing) {
+            return new Promise(function(resolve, reject) {
+                failedQueue.push({ resolve, reject });
+            })
+            .then(() => {
+                // Когда рефреш закончится, повторяем оригинальный запрос
+                return api(originalRequest);
+            })
+            .catch(err => {
+                return Promise.reject(err);
+            });
         }
 
-        /*
-         * Помечаем запрос,
-         * чтобы не получить бесконечный цикл.
-         */
-        originalRequest._retry = true
+        // Если мы здесь, значит это ПЕРВЫЙ запрос, получивший 401.
+        // Включаем блокировку и начинаем рефреш.
+        originalRequest._retry = true;
+        isRefreshing = true;
 
-        console.log(
-            '[API] 401 received, refreshing session...'
-        )
+        try {
+            const refreshed = await refreshSession();
+            
+            if (!refreshed) {
+                // Если рефреш не удался (например, токен реально протух)
+                processQueue(new Error('Refresh failed'), null);
+                window.location.href = '/login';
+                return Promise.reject(error);
+            }
 
-        const refreshed = await refreshSession()
-
-        if (!refreshed) {
-            window.location.href = '/login'
-            throw error
+            // Рефреш успешен! Разблокируем очередь и повторяем все ждущие запросы
+            processQueue(null, 'Success');
+            return api(originalRequest);
+            
+        } catch (err) {
+            processQueue(err, null);
+            window.location.href = '/login';
+            return Promise.reject(err);
+        } finally {
+            // В любом случае снимаем блокировку в конце
+            isRefreshing = false;
         }
-
-        console.log(
-            '[API] Retry original request:',
-            originalRequest.url
-        )
-
-        /*
-         * Повторяем исходный запрос.
-         */
-        return api(originalRequest)
     }
 )

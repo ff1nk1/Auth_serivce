@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Log;
+
 
 class AuthController extends Controller
 {
@@ -28,7 +30,7 @@ class AuthController extends Controller
     public function get_user(Request $request) 
     {
     // Берем текущего пользователя прямо из объекта запроса
-    $user = $request->user();
+        $user = $request->user();
     
 
     return response()->json($user);
@@ -49,7 +51,7 @@ class AuthController extends Controller
     public function refresh(Request $request)
     {
         $oldRefreshToken = $request->cookie('refresh_token');
-
+        Log::debug('олд рефреш - ', ['old_refresh'=> $oldRefreshToken]);
         $tokens = $this->authService->refreshTokens($oldRefreshToken);
 
         if (! $tokens) {
