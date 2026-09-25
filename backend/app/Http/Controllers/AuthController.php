@@ -82,7 +82,6 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        $this->authorize('update', $user->profile);
 
         $validated = $request->validate([
             'name'  => 'sometimes|string|max:255',

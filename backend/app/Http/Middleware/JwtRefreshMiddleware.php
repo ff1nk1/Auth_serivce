@@ -16,7 +16,7 @@ class JwtRefreshMiddleware
 {
     public function __construct(
         private JwtService $jwtService,
-        private AuthService $authService // Инжектим наш AuthService
+        private AuthService $authService
     ) {}
 
     public function handle(Request $request, Closure $next): Response 

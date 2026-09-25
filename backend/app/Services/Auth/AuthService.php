@@ -2,7 +2,6 @@
 
 namespace App\Services\Auth;
 
-use App\Models\Profile;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -26,10 +25,6 @@ class AuthService
 
         $user = User::create($userData);
 
-        Profile::create([
-            'user_id'    => $user->id,
-            'first_name' => $user->name,
-        ]);
 
         return $user;
     }
