@@ -181,3 +181,39 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.profile-card {
+  position: relative;   /* чтобы кнопка позиционировалась относительно карточки */
+}
+
+.logout-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  width: 32px;
+  height: 32px;
+  padding: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #f5f5f5;
+  color: #d33;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;   /* скруглённые углы */
+
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.logout-button:hover {
+  background: #ffecec;
+  border-color: #f5b5b5;
+  color: #b00;
+}
+
+.logout-button:active {
+  transform: scale(0.96);
+}

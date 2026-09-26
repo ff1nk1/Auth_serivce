@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\RegistrationRequest;
+use App\Http\Requests\PasswordChangeRequest;
+
 use App\Services\Auth\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+
 
 
 class AuthController extends Controller
@@ -111,4 +115,22 @@ class AuthController extends Controller
             ->cookie('access_token', $accessToken, $cookieMinutes, '/', null, $secure, true, false, 'lax')
             ->cookie('refresh_token', $refreshToken, $cookieMinutes, '/', null, $secure, true, false, 'lax');
     }
+
+    public function change_password(PasswordChangeRequest $request)
+    {
+        $data = $request->validated();
+        try {
+            DB::transaction(function () use ($data) {
+                $user = $this->authService->check_password(auth()->id(), $data['current_password']);
+
+                $this->authService->set_psw_as_deleted($user);
+                $this->authService->set_new_password($user, $data['new_password']);
+            });
+
+            return response()->json(['message' => 'Пароль успешно изменён']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
 }
+

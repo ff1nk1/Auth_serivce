@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
 
 class AuthService
 {
@@ -134,5 +136,28 @@ class AuthService
             'access_token'  => $accessToken,
             'refresh_token' => $refreshToken,
         ];
+    }
+
+
+    public function check_password($id,$password)
+    {
+        $user = User::findOrFail($id);
+        if (!Hash::check($password, $user->password)) {
+            throw new \Exception('Неверный пароль');
+        }   
+        return $user;
+    }
+
+    public function set_psw_as_deleted(User $user): void
+    {
+        $user->deleted_password = $user->password;   
+        $user->password = Str::random(60); 
+        $user->save();
+    }
+
+    public function set_new_password(User $user, string $newPassword): void
+    {
+        $user->password = Hash::make($newPassword);
+        $user->save();
     }
 }

@@ -12,7 +12,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasOne; 
 
 #[Fillable(['name', 'email', 'password', 'role_id', 'number'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token','deleted_password'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */

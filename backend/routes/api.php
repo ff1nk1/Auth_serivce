@@ -29,4 +29,5 @@ Route::middleware(['cookie.token', 'auth:api'])->group(function () {
     Route::get('/user', [AuthController::class,'get_user']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::patch('/profile',[AuthController::class,'editData']);
+    Route::patch('/profile/password',[AuthController::class,'change_password']);
 });
