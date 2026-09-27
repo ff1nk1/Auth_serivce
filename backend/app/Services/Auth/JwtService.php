@@ -89,7 +89,6 @@ class JwtService
 
             return $user;
         } catch (Throwable $e) {
-
             return null;
         }
     }
