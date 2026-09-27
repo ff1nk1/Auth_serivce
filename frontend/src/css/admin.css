@@ -1,0 +1,207 @@
+* {
+    box-sizing: border-box;
+}
+
+.admin-page {
+    min-height: 100vh;
+    padding: 40px 24px;
+    background: #f4f6f8;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #29323d;
+}
+
+/* Главный контейнер-карточка панели */
+.admin-card {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 32px;
+    background: #ffffff;
+    border: 1px solid #e3e8ed;
+    border-radius: 16px;
+    box-shadow: 0 12px 32px rgba(40, 52, 65, 0.05);
+}
+
+/* Заголовок панели */
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.admin-header h2 {
+    margin: 0;
+    color: #29323d;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+}
+
+/* Панель поиска */
+.search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+
+.search-input {
+    width: 320px;
+    height: 42px;
+    padding: 0 14px;
+    border: 1px solid #dce2e7;
+    border-radius: 10px;
+    outline: none;
+    background: #fbfcfd;
+    color: #29323d;
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.search-input::placeholder {
+    color: #a3adb8;
+}
+
+.search-input:focus {
+    background: #ffffff;
+    border-color: #657887;
+    box-shadow: 0 0 0 3px rgba(101, 120, 135, 0.12);
+}
+
+/* Кнопки */
+.btn {
+    height: 42px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-primary {
+    background: #4a5c6d;
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background: #3c4c5b;
+}
+
+.btn-secondary {
+    background: #eef2f5;
+    color: #566b7b;
+}
+
+.btn-secondary:hover {
+    background: #e2e7ec;
+}
+
+.btn:active {
+    transform: translateY(1px);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Область таблицы */
+.table-wrapper {
+    overflow-x: auto;
+    border: 1px solid #e8ecef;
+    border-radius: 12px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 14px;
+}
+
+.admin-table th {
+    padding: 14px 18px;
+    background: #f8fafc;
+    color: #7b8794;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid #e8ecef;
+}
+
+.admin-table td {
+    padding: 16px 18px;
+    border-bottom: 1px solid #f0f3f5;
+    color: #334155;
+}
+
+.admin-table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.admin-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Стилизация выпадающего списка ролей */
+.role-select {
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid #dce2e7;
+    border-radius: 8px;
+    background-color: #fbfcfd;
+    color: #29323d;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.role-select:focus {
+    border-color: #657887;
+    background-color: #ffffff;
+}
+
+/* Состояния загрузки и пустой таблицы */
+.table-empty, .table-loading {
+    padding: 40px;
+    text-align: center;
+    color: #7b8794;
+    font-size: 14px;
+}
+
+/* Пагинация */
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f3f5;
+}
+
+.pagination-info {
+    color: #7b8794;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.pagination-controls {
+    display: flex;
+    gap: 8px;
+}

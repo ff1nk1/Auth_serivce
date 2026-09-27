@@ -17,15 +17,21 @@ Route::middleware('guest')->group(function () {
 Route::post('/refresh', [AuthController::class, 'refresh']);
 
 Route::middleware([
-    'jwt.refresh',
+    'cookie.token',
     'auth:api',
     'role:admin',
 ])->group(function () {
-    Route::get('/admin', [AdminController::class, 'index']);
+    Route::get('/users', [AdminController::class, 'index']);
+    Route::get('/roles', [AdminController::class, 'getRoles']);
+    Route::patch('/users/{id}/role', [AdminController::class, 'changeRole']);
 });
 
 // 2. Защищенные маршруты (доступны ТОЛЬКО после входа)
-Route::middleware(['cookie.token', 'auth:api'])->group(function () {
+Route::middleware(
+[
+        'cookie.token', 
+        'auth:api'
+])->group(function () {
     Route::get('/user', [AuthController::class,'get_user']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::patch('/profile',[AuthController::class,'editData']);

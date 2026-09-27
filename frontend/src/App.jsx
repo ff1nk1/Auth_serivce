@@ -5,6 +5,7 @@ import Login from './Pages/Login'
 import Registration from './Pages/Registration'
 import Profile from './Pages/Profile'
 import ProfilePage from './Pages/ProfilePage'
+import Admin from './Pages/Admin'
 
 
 export default function App() {
@@ -15,6 +16,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/registration" element={<Registration />} />
         <Route path="/profile" element={<ProfilePage/>} />
+        <Route path="/admin" element={<Admin />} />
+
 
 
         {/* Редирект по умолчанию для неизвестных маршрутов (404) */}
