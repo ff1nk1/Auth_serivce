@@ -6,10 +6,8 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-
+use Illuminate\Validation\ValidationException;
 
 class AuthService
 {
@@ -27,7 +25,6 @@ class AuthService
         $userData['role_id'] = Role::where('slug', 'customer')->valueOrFail('id');
 
         $user = User::create($userData);
-
 
         return $user;
     }
@@ -53,12 +50,10 @@ class AuthService
      */
     public function refreshTokens(?string $oldRefreshToken): ?array
     {
-        Log::debug("Начали refreshTokens");
 
         if (! $oldRefreshToken) {
             return null;
         }
-        Log::debug("! oldRefreshToken - норм");
 
         $oldHash = hash('sha256', $oldRefreshToken);
         $oldKey = "refresh_token:{$oldHash}";
@@ -68,23 +63,18 @@ class AuthService
         if (Redis::exists($blacklistKey)) {
             return null;
         }
-        Log::debug("Не в блэклисте");
-
 
         $userId = Redis::get($oldKey);
         if (! $userId) {
             return null;
         }
-        Log::debug("есть айди пользователя в редисе");
-
 
         $user = User::find($userId);
         if (! $user) {
             Redis::del($oldKey);
+
             return null;
         }
-        Log::debug("есть пользователь по поиску в бд");
-
 
         // Отправляем старый токен в blacklist
         $oldTtl = Redis::ttl($oldKey);
@@ -125,7 +115,7 @@ class AuthService
     private function generateTokens(User $user): array
     {
         $accessToken = $this->jwtService->createAccessToken($user);
-        
+
         $refreshToken = bin2hex(random_bytes(64));
         $refreshHash = hash('sha256', $refreshToken);
         $refreshTtl = (int) config('jwt.refresh_ttl');
@@ -133,25 +123,25 @@ class AuthService
         Redis::setex("refresh_token:{$refreshHash}", $refreshTtl, $user->id);
 
         return [
-            'access_token'  => $accessToken,
+            'access_token' => $accessToken,
             'refresh_token' => $refreshToken,
         ];
     }
 
-
-    public function check_password($id,$password)
+    public function check_password($id, $password)
     {
         $user = User::findOrFail($id);
-        if (!Hash::check($password, $user->password)) {
+        if (! Hash::check($password, $user->password)) {
             throw new \Exception('Неверный пароль');
-        }   
+        }
+
         return $user;
     }
 
     public function set_psw_as_deleted(User $user): void
     {
-        $user->deleted_password = $user->password;   
-        $user->password = Str::random(60); 
+        $user->deleted_password = $user->password;
+        $user->password = Str::random(60);
         $user->save();
     }
 

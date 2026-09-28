@@ -18,25 +18,25 @@ class AuthServiceTest extends TestCase
     use RefreshDatabase;
 
     protected AuthService $authService;
+
     protected JwtService $jwtService;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        
         // Устанавливаем реальные конфиги для теста
         Config::set('jwt.secret', 'real-secret-key-for-integration-tests-12345');
         Config::set('jwt.algorithm', 'HS256');
         Config::set('jwt.ttl', 15);
-        Config::set('jwt.refresh_ttl', 100); 
+        Config::set('jwt.refresh_ttl', 100);
 
-        $this->jwtService = new JwtService();
+        $this->jwtService = new JwtService;
         $this->authService = new AuthService($this->jwtService);
-        
+
         // Очищаем Redis перед каждым тестом, чтобы старые данные не влияли
         // ВНИМАНИЕ: Убедитесь, что в phpunit.xml настроена отдельная база Redis для тестов!
-        Redis::flushdb(); 
+        Redis::flushdb();
     }
 
     /**
@@ -47,10 +47,10 @@ class AuthServiceTest extends TestCase
         // 1. Создаем юзера и логинимся
         $role = Role::factory()->create();
         $user = User::factory()->create(['role_id' => $role->id, 'password' => Hash::make('password123')]);
-        
+
         $tokens = $this->authService->login(['email' => $user->email, 'password' => 'password123']);
         $oldRefreshToken = $tokens['refresh_token'];
-        
+
         // Убеждаемся, что хэш старого токена реально лежит в Redis
         $oldHash = hash('sha256', $oldRefreshToken);
         $this->assertTrue(Redis::exists("refresh_token:{$oldHash}") > 0, 'Refresh токен должен быть в Redis после логина');
@@ -64,17 +64,17 @@ class AuthServiceTest extends TestCase
 
         // 3. Проверяем состояние Redis после Refresh
         $this->assertFalse(
-            Redis::exists("refresh_token:{$oldHash}") > 0, 
+            Redis::exists("refresh_token:{$oldHash}") > 0,
             'Старый токен должен быть удален из активных'
         );
         $this->assertTrue(
-            Redis::exists("refresh_token:blacklist:{$oldHash}") > 0, 
+            Redis::exists("refresh_token:blacklist:{$oldHash}") > 0,
             'Старый токен должен быть помещен в блэклист'
         );
 
         $newHash = hash('sha256', $newTokens['refresh_token']);
         $this->assertTrue(
-            Redis::exists("refresh_token:{$newHash}") > 0, 
+            Redis::exists("refresh_token:{$newHash}") > 0,
             'Новый токен должен быть сохранен в Redis'
         );
     }
@@ -86,18 +86,18 @@ class AuthServiceTest extends TestCase
     {
         $role = Role::factory()->create();
         $user = User::factory()->create(['role_id' => $role->id, 'password' => Hash::make('password')]);
-        
+
         // Получаем токены
         $tokens = $this->authService->login(['email' => $user->email, 'password' => 'password']);
         $refreshToken = $tokens['refresh_token'];
-        
+
         // 1-й рефреш (должен пройти успешно)
         $firstRefresh = $this->authService->refreshTokens($refreshToken);
         $this->assertNotNull($firstRefresh);
 
         // Должен вернуть null, так как токен уже в блэклисте
         $secondRefresh = $this->authService->refreshTokens($refreshToken);
-        
+
         $this->assertNull($secondRefresh, 'Использование блэклистнутого токена должно возвращать null');
     }
 
@@ -108,7 +108,7 @@ class AuthServiceTest extends TestCase
     {
         $role = Role::factory()->create();
         $user = User::factory()->create(['role_id' => $role->id, 'password' => Hash::make('password')]);
-        
+
         $tokens = $this->authService->login(['email' => $user->email, 'password' => 'password']);
         $accessToken = $tokens['access_token'];
 
@@ -125,7 +125,7 @@ class AuthServiceTest extends TestCase
 
         $identifiedUserAfterLogout = $this->jwtService->userFromRequest($request);
         $this->assertNull($identifiedUserAfterLogout, 'После логаута токен не должен авторизовывать пользователя');
-        
+
         // Убедимся физически, что JTI токена лежит в Redis
         $decoded = $this->jwtService->decode($accessToken);
         $this->assertTrue(

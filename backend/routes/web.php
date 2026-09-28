@@ -26,7 +26,7 @@ Route::middleware([
 
 // 2. Защищенные маршруты (доступны ТОЛЬКО после входа)
 Route::middleware(['jwt.refresh', 'auth:api'])->group(function () {
-    Route::get('/user', [AuthController::class,'get_user']);
+    Route::get('/user', [AuthController::class, 'get_user']);
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::patch('/profile',[AuthController::class,'editData']);
+    Route::patch('/profile', [AuthController::class, 'editData']);
 });

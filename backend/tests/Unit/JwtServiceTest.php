@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services\Auth;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Services\Auth\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -9,7 +10,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
-use App\Models\Role;
 
 class JwtServiceTest extends TestCase
 {
@@ -26,7 +26,7 @@ class JwtServiceTest extends TestCase
         Config::set('jwt.algorithm', 'HS256');
         Config::set('jwt.ttl', 15);
 
-        $this->jwtService = new JwtService();
+        $this->jwtService = new JwtService;
     }
 
     /**

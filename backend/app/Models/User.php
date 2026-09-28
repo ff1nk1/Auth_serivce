@@ -9,10 +9,9 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasOne; 
 
 #[Fillable(['name', 'email', 'password', 'role_id', 'number'])]
-#[Hidden(['password', 'remember_token','deleted_password'])]
+#[Hidden(['password', 'remember_token', 'deleted_password'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -37,5 +36,4 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Role::class);
     }
-
 }

@@ -38,16 +38,16 @@ class AuthServiceTest extends TestCase
             'email' => $user->email,
             'password' => 'password123',
         ];
-        
+
         $fakeJwt = 'fake.access.token';
 
         $this->mock(JwtService::class, function (MockInterface $mock) use ($user, $fakeJwt) {
             $mock->shouldReceive('createAccessToken')
-                 ->once()
-                 ->withArgs(function ($arg) use ($user) {
-                     return $arg->id === $user->id;
-                 })
-                 ->andReturn($fakeJwt);
+                ->once()
+                ->withArgs(function ($arg) use ($user) {
+                    return $arg->id === $user->id;
+                })
+                ->andReturn($fakeJwt);
         });
 
         Redis::shouldReceive('setex')->once();
@@ -90,6 +90,7 @@ class AuthServiceTest extends TestCase
         // Пытаемся залогиниться
         $authService->login($credentials);
     }
+
     /**
      * Тест логаута со строгим мокированием
      */
@@ -99,16 +100,15 @@ class AuthServiceTest extends TestCase
 
         $this->mock(JwtService::class, function (MockInterface $mock) use ($accessToken) {
             $mock->shouldReceive('revokeToken')
-                 ->once()
-                 ->with($accessToken);
+                ->once()
+                ->with($accessToken);
         });
 
         // Мокаем Redis для refresh_token (в логауте он удаляется, но в этом тесте мы передаем null для рефреша)
-        Redis::shouldReceive('del')->never(); 
+        Redis::shouldReceive('del')->never();
 
         $authService = app(AuthService::class);
 
         $authService->logout($accessToken, null);
     }
-
 }

@@ -12,7 +12,6 @@ const UsersList = () => {
   const [searchInput, setSearchInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
 
-  // Загружаем список ролей
   useEffect(() => {
     const fetchRoles = async () => {
       try {

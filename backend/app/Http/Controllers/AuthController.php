@@ -2,27 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\RegistrationRequest;
 use App\Http\Requests\PasswordChangeRequest;
-
+use App\Http\Requests\RegistrationRequest;
 use App\Services\Auth\AuthService;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-
-
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
     use AuthorizesRequests;
 
     public function __construct(
-        private AuthService $authService // Инжектим наш новый сервис вместо JwtService
+        private AuthService $authService
     ) {}
-
 
     public function registration(RegistrationRequest $request)
     {
@@ -31,13 +26,11 @@ class AuthController extends Controller
         return response()->json($user, 201);
     }
 
-    public function get_user(Request $request) 
+    public function get_user(Request $request)
     {
-    // Берем текущего пользователя прямо из объекта запроса
         $user = $request->user();
-    
 
-    return response()->json($user);
+        return response()->json($user);
     }
 
     public function login(Request $request)
@@ -55,7 +48,7 @@ class AuthController extends Controller
     public function refresh(Request $request)
     {
         $oldRefreshToken = $request->cookie('refresh_token');
-        Log::debug('олд рефреш - ', ['old_refresh'=> $oldRefreshToken]);
+        Log::debug('олд рефреш - ', ['old_refresh' => $oldRefreshToken]);
         $tokens = $this->authService->refreshTokens($oldRefreshToken);
 
         if (! $tokens) {
@@ -88,17 +81,16 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-
         $validated = $request->validate([
-            'name'  => 'sometimes|string|max:255',
+            'name' => 'sometimes|string|max:255',
             'number' => 'sometimes|string|max:20',
         ]);
 
-        $user->update($validated); 
+        $user->update($validated);
 
         return response()->json([
             'message' => 'Данные успешно обновлены',
-            'user'    => $user->fresh()
+            'user' => $user->fresh(),
         ]);
     }
 
@@ -133,4 +125,3 @@ class AuthController extends Controller
         }
     }
 }
-

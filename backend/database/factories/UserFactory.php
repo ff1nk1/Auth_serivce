@@ -13,14 +13,13 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'     => $this->faker->name(),
-            'email'    => $this->faker->unique()->safeEmail(),
+            'name' => $this->faker->name(),
+            'email' => $this->faker->unique()->safeEmail(),
             'password' => Hash::make('password123'), // Дефолтный пароль для тестов
-            'role_id'  => 1,                          // Базовая роль (например, обычный пользователь)
-            'number'   => $this->faker->phoneNumber(), // Телефон или другой номер
+            'role_id' => 1,                          // Базовая роль (например, обычный пользователь)
+            'number' => $this->faker->phoneNumber(), // Телефон или другой номер
         ];
     }
-    
 
     /**
      * Состояние для создания пользователя с роу админа

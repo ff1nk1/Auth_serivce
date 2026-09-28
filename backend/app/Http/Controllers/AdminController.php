@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
-use App\Models\Role;
 
 class AdminController extends Controller
 {
@@ -14,7 +14,7 @@ class AdminController extends Controller
         $query = User::with('role');
 
         if ($request->filled('email')) {
-            $query->where('email', 'like', '%' . $request->input('email') . '%');
+            $query->where('email', 'like', '%'.$request->input('email').'%');
         }
 
         $users = $query->paginate($request->input('per_page', 10));
@@ -32,21 +32,19 @@ class AdminController extends Controller
     {
         // Проверяем, что переданный role_id реально существует в таблице roles
         $request->validate([
-            'role_id' => 'required|exists:roles,id'
+            'role_id' => 'required|exists:roles,id',
         ]);
 
         $user = User::findOrFail($id);
         $user->role_id = $request->input('role_id');
         $user->save();
-        
+
         // Подгружаем обновленную роль, чтобы вернуть её на фронт
         $user->load('role');
 
         return response()->json([
             'message' => 'Роль успешно обновлена',
-            'user' => $user
+            'user' => $user,
         ]);
     }
 }
-
-

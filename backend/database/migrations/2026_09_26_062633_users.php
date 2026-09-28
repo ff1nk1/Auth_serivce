@@ -6,21 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    
     public function up(): void
     {
-        Schema::table("users", function (Blueprint $table) 
-        {
-            $table->string("deleted_password")->nullable();
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('deleted_password')->nullable();
 
         });
     }
 
-    
     public function down(): void
     {
-        Schema::table("users", function (Blueprint $table){
-        $table->dropColumn("deleted_password");
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('deleted_password');
         });
     }
 };

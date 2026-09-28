@@ -28,12 +28,12 @@ Route::middleware([
 
 // 2. Защищенные маршруты (доступны ТОЛЬКО после входа)
 Route::middleware(
-[
-        'cookie.token', 
-        'auth:api'
-])->group(function () {
-    Route::get('/user', [AuthController::class,'get_user']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::patch('/profile',[AuthController::class,'editData']);
-    Route::patch('/profile/password',[AuthController::class,'change_password']);
-});
+    [
+        'cookie.token',
+        'auth:api',
+    ])->group(function () {
+        Route::get('/user', [AuthController::class, 'get_user']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::patch('/profile', [AuthController::class, 'editData']);
+        Route::patch('/profile/password', [AuthController::class, 'change_password']);
+    });

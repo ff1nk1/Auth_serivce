@@ -8,9 +8,7 @@ export const api = axios.create({
     withCredentials: true,
 })
 
-// Флаг-блокировка: идет ли сейчас процесс рефреша?
 let isRefreshing = false;
-// Очередь для запросов, которые получили 401, пока шел рефреш
 let failedQueue = [];
 
 const processQueue = (error, token = null) => {
@@ -48,9 +46,6 @@ api.interceptors.response.use(
             });
         }
 
-        // Если мы здесь, значит это ПЕРВЫЙ запрос, получивший 401.
-        // Включаем блокировку и начинаем рефреш.
-        originalRequest._retry = true;
         isRefreshing = true;
 
         try {

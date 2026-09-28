@@ -18,16 +18,14 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
         ]);
 
-        // 2. Достаем нужную роль из базы (например, admin)
         $adminRole = Role::where('slug', 'admin')->first();
 
-        // 3. Создаем пользователя, явно указывая существующую роль
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
-            'role_id' => $adminRole->id, // Перезаписываем поведение фабрики
+            'role_id' => $adminRole->id,
         ]);
-        
+
         $customerRole = Role::where('slug', 'customer')->first();
         User::factory(10)->create([
             'role_id' => $customerRole->id,
