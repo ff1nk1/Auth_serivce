@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Junges\Kafka\Facades\Kafka;
+use Illuminate\Support\Facades\Log;
+
 
 class AuthService
 {
@@ -19,15 +22,42 @@ class AuthService
      * Регистрация пользователя
      */
     public function register(array $userData): User
-    {
-        $userData['password'] = Hash::make($userData['password']);
+{
+    $userData['password'] = Hash::make($userData['password']);
+    $userData['role_id']  = Role::where('slug', 'customer')->valueOrFail('id');
 
-        $userData['role_id'] = Role::where('slug', 'customer')->valueOrFail('id');
+    $user = User::create($userData);
 
-        $user = User::create($userData);
-
-        return $user;
+    try {
+        Kafka::publish(config('kafka.brokers', 'kafka:29092'))
+            ->onTopic('user.events')
+            ->withConfigOptions([
+                'socket.timeout.ms'  => 60000,
+                'message.timeout.ms' => 60000,
+                'request.timeout.ms' => 30000,
+                'retries'            => 10,
+                'retry.backoff.ms'   => 1000,
+            ])
+            ->withKafkaKey((string) $user->id)
+            ->withHeaders([
+                'event-type' => 'user.registered',
+                'source'     => 'auth-service',
+            ])
+            ->withBody([
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'name'  => $user->name,
+            ])
+            ->send();
+    } catch (\Throwable $e) {
+        Log::error('Kafka publish failed on user.registered', [
+            'user_id' => $user->id,
+            'error'   => $e->getMessage(),
+        ]);
     }
+
+    return $user;
+}
 
     /**
      * Проверка данных и генерация пары токенов

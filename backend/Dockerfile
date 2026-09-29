@@ -10,12 +10,13 @@ RUN apk add --no-cache \
     git \
     oniguruma-dev \
     libpq-dev \
+    librdkafka-dev \
     $PHPIZE_DEPS \
     && docker-php-ext-install pdo_pgsql pgsql mbstring exif pcntl bcmath gd \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
+    && MAKEFLAGS="-j$(nproc)" pecl install redis rdkafka mongodb \
+    && docker-php-ext-enable redis rdkafka mongodb \
     && apk del $PHPIZE_DEPS
-
+    
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www

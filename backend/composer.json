@@ -12,6 +12,8 @@
         "laravel/framework": "^13.17",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
+        "mateusjunges/laravel-kafka": "^2.12",
+        "mongodb/laravel-mongodb": "^5.11",
         "predis/predis": "^3.6"
     },
     "require-dev": {

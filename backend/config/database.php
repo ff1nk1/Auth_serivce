@@ -114,7 +114,22 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+    
+        'mongodb' => [
+            'driver'   => 'mongodb',
+            'host'     => env('MONGODB_HOST', 'mongodb'),
+            'port'     => env('MONGODB_PORT', 27017),
+            'database' => env('MONGODB_DATABASE', 'laravel_mongo'), // Ваше имя базы данных
+            'username' => env('MONGO_INITDB_ROOT_USERNAME', ''),
+            'password' => env('MONGO_INITDB_ROOT_PASSWORD', ''),
+            'options'  => [
+                'database' => env('MONGODB_AUTHENTICATION_DATABASE', 'admin'), // По умолчанию Mongo аутентифицирует через admin
+        ],
     ],
+
+],
+        
+
 
     /*
     |--------------------------------------------------------------------------
