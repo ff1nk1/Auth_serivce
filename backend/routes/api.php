@@ -3,6 +3,8 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\NotificationsController;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -36,4 +38,18 @@ Route::middleware(
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::patch('/profile', [AuthController::class, 'editData']);
         Route::patch('/profile/password', [AuthController::class, 'change_password']);
+    });
+
+
+Route::middleware(
+    [   
+        'cookie.token',
+        'auth:api',
+        'role:admin,analyst'
+
+    ])->group(function () 
+    {
+        Route::get('/notifications',[NotificationsController::class,'get_notifications']);
+        Route::get('/notifications/{id}',[NotificationsController::class,'get_notifications_by_id']);
+
     });

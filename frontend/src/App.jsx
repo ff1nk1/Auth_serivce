@@ -6,6 +6,7 @@ import Registration from './Pages/Registration'
 import Profile from './Pages/Profile'
 import ProfilePage from './Pages/ProfilePage'
 import Admin from './Pages/Admin'
+import Notifications from './Pages/Notifications'
 
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/registration" element={<Registration />} />
         <Route path="/profile" element={<ProfilePage/>} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/notifications" element={<Notifications/>}/>
 
 
 
