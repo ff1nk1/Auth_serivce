@@ -20,6 +20,7 @@ return [
         'password' => env('KAFKA_PASSWORD', null),
     ],
 
+    'allow.auto.create.topics' => true,
     /*
      | Kafka consumers belonging to the same consumer group share a group id.
      | The consumers in a group then divides the topic partitions as fairly amongst themselves as possible by

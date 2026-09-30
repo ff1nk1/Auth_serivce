@@ -6,7 +6,8 @@ use App\Http\Requests\NotificationsRequest;
 use App\Models\EmailLog;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
-
+use Illuminate\Support\Facades\Mail;
+use App\Mail\WelcomeMail;
 class NotificationService
 {
     /**
@@ -41,5 +42,34 @@ class NotificationService
 
         // Возвращаем результат с пагинацией и сортировкой
         return $query->orderBy('created_at', 'desc')->paginate($perPage);
+    }
+
+    public function send_email($notification)
+    {
+        $email = $notification->email;
+        $name = $notification->name;
+        try{
+            Mail::to($email)->send(new WelcomeMail([
+                "email"=> $email,
+                "name"=>$name,
+                ]));
+
+            $notification->update([
+            'status'        => 'sent',
+            'error_message' => null,
+            'time'          => time(),
+            ]);
+            return true;
+
+        }catch (\Exception $e)
+        {
+            $lastError = $e->getMessage();
+            $notification->update([
+                'status'        => 'failed',
+                'error_message' => 'Ошибка отправки из админки: ' . $e->getMessage(),
+        ]);
+            return false;
+        }
+        
     }
 }

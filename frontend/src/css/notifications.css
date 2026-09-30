@@ -257,7 +257,18 @@
     color: #7b8794;
     font-size: 14px;
 }
+/* Стилизация ссылки с ID внутри ячейки */
+.id-cell a {
+    color: #4a5c6d;
+    font-weight: 600;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+}
 
+/* Ховер-эффект при наведении */
+.id-cell a:hover {
+    color: #29323d;
+}
 /* Пагинация */
 .pagination {
     display: flex;
@@ -277,4 +288,101 @@
 .pagination-controls {
     display: flex;
     gap: 8px;
+}
+/* Кнопки и шапка */
+.header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+/* Основной контейнер данных */
+.detail-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.detail-row {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.detail-row.payload-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Статусы */
+.status-badge {
+    font-weight: 600;
+}
+
+.status-badge.status-sent {
+    color: #16a34a;
+}
+
+.status-badge.status-failed {
+    color: #dc2626;
+}
+
+.status-badge.status-pending {
+    color: #d97706;
+}
+
+.dlq-status {
+    font-weight: 500;
+}
+
+/* Блок ошибки */
+.error-box {
+    background-color: #fef2f2;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #fee2e2;
+}
+
+.error-title {
+    color: #dc2626;
+}
+
+.error-text {
+    margin: 4px 0 0 0;
+    color: #991b1b;
+    font-size: 13px;
+}
+
+/* Блок кода Payload */
+.payload-pre {
+    background-color: #f8fafc;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    overflow-x: auto;
+    font-size: 13px;
+    margin-top: 6px;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* Баннеры статуса выполнения отклика */
+.alert-banner {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.alert-banner.alert-success {
+    background-color: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.alert-banner.alert-error {
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
 }

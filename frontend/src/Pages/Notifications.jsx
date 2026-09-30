@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import '../css/notifications.css';
 import { api } from '../auth/api';
-
+import { Link } from 'react-router-dom'; 
 // Пример статусов
 const STATUS_OPTIONS = [
     { value: '', label: 'Все статусы' },
@@ -199,7 +199,12 @@ export const NotificationsPage = () => {
                             <tbody>
                                 {logs.map((log) => (
                                     <tr key={log._id || log.id}>
-                                        <td className="id-cell">{log._id || log.id}</td>
+                                        <td className="id-cell">
+                                        <Link 
+                                        to={`/notifications/${log._id || log.id}`}                                                >
+                                        {log._id || log.id}
+                                        </Link>
+                                        </td>
                                         <td>{log.email || '—'}</td>
                                         <td>
                                             <span className={`status-badge status-${log.status}`}>

@@ -10,7 +10,6 @@ class AdminController extends Controller
 {
     public function index(Request $request)
     {
-        // Используем with('role'), чтобы Laravel подгрузил роли одним доп. запросом (Eager Loading)
         $query = User::with('role');
 
         if ($request->filled('email')) {

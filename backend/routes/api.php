@@ -50,6 +50,7 @@ Route::middleware(
     ])->group(function () 
     {
         Route::get('/notifications',[NotificationsController::class,'get_notifications']);
-        Route::get('/notifications/{id}',[NotificationsController::class,'get_notifications_by_id']);
+        Route::get('/notifications/{id}',[NotificationsController::class,'get_notification_by_id']);
+        Route::post('/notifications/{id}/resend',[NotificationsController::class,'resend']);
 
     });
