@@ -34,8 +34,6 @@ class AuthServiceTest extends TestCase
         $this->jwtService = new JwtService();
         $this->authService = new AuthService($this->jwtService);
         
-        // Очищаем Redis перед каждым тестом, чтобы старые данные не влияли
-        // ВНИМАНИЕ: Убедитесь, что в phpunit.xml настроена отдельная база Redis для тестов!
         Redis::flushdb(); 
     }
 

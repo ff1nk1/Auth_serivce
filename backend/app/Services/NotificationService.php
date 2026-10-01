@@ -13,11 +13,12 @@ use Illuminate\Support\Facades\Log;
 class NotificationService
 {
 
-    private const MAX_RETRIES = 3;         // Максимальное кол-во попыток
-    private const INITIAL_BACKOFF_SEC = 1;  // Базовая задержка в секундах
+    public const MAX_RETRIES = 3;         // Максимальное кол-во попыток
+    public const INITIAL_BACKOFF_SEC = 1;  // Базовая задержка в секундах
     /**
      * Формирование фильтрованного запроса и получение пагинированных данных
      */
+    
     public function getFilteredNotifications(NotificationsRequest $request, int $perPage = 20): LengthAwarePaginator
     {
         $query = EmailLog::query();
@@ -149,4 +150,5 @@ class NotificationService
     {
         sleep($seconds);
     }
+
 }

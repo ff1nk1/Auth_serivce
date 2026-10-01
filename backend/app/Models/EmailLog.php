@@ -2,10 +2,11 @@
 namespace App\Models;
 
 use MongoDB\Laravel\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\Factories\HasFactory; 
 class EmailLog extends Model
 {
-    protected $connection = 'mongodb'; // Указываем подключение к Mongo
+    use HasFactory; 
+    protected $connection = 'mongodb';
     protected $collection = 'email_logs';
 
     protected $fillable = [
@@ -14,8 +15,9 @@ class EmailLog extends Model
         'payload',
         'status',
         'retries',       
-        'moved_to_dlq',  // true / false
+        'moved_to_dlq', 
         'error_message',
         'name',
+        'time',
     ];
 }
