@@ -88,6 +88,11 @@ services:
       - "8025:8025"
     networks:
       - app_network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "1025"]
+      interval: 3s
+      timeout: 3s
+      retries: 2
 
 
   frontend:
@@ -183,6 +188,11 @@ services:
         condition: service_started
       app:
         condition: service_started
+      mailhog:
+        condition: service_healthy 
+      redis:
+        condition: service_healthy
+     
     networks:
       - app_network
 

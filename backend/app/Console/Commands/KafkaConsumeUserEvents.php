@@ -18,8 +18,11 @@ class KafkaConsumeUserEvents extends Command
         $consumer = Kafka::consumer(['user.events'])
             ->withBrokers(config('kafka.brokers', 'kafka:29092'))
             ->withConsumerGroupId('auth-service-consumers-v1') // Оставляем стабильное имя группы
-            ->withHandler(new UserEventsHandler())
+            ->withHandler(app(UserEventsHandler::class))            
             ->withAutoCommit()
+            ->withOptions([
+                'auto.offset.reset' => 'earliest',
+            ])
             ->build();
 
         try {
