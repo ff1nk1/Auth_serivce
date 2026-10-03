@@ -15,14 +15,17 @@ import Admin from './Pages/Admin'
 import Notifications from './Pages/Notifications'
 import NotificationDetail from './Pages/NotificationDetail'
 
+// НОВЫЕ ИМПОРТЫ
+import Categories from './Pages/Categories'
+import CategoryProducts from './Pages/CategoryProducts'
+import StoreProducts from './Pages/StoreProducts'
+
 // Импорт обработчика ошибок и загрузчиков
 import RootErrorBoundary from './RootErrorBoundary'
-import { adminLoader, notificationsLoader,notificationDetailLoader } from './notifications/loaders'
+import { adminLoader, notificationsLoader, notificationDetailLoader } from './notifications/loaders'
 
-// 1. Создаем роутер вместо BrowserRouter
 const router = createBrowserRouter(
   createRoutesFromElements(
-    // Корневой Route БЕЗ пути ловит ошибки для ВСЕХ вложенных роутов
     <Route errorElement={<RootErrorBoundary />}>
       
       {/* Публичные роуты */}
@@ -32,29 +35,23 @@ const router = createBrowserRouter(
       {/* Роуты пользователя */}
       <Route path="/profile" element={<ProfilePage />} />
       
-      {/* ЗАЩИЩЕННЫЕ РОУТЫ (добавляем к ним loader) */}
-      <Route 
-        path="/admin" 
-        element={<Admin />} 
-        loader={adminLoader} 
-      />
-      <Route 
-        path="/notifications" 
-        element={<Notifications />} 
-        loader={notificationsLoader} 
-      />
-      <Route 
-        path="/notifications/:id" 
-        element={<NotificationDetail />} 
-        loader={notificationDetailLoader} 
-      />
-
+      {/* КАТАЛОГ И ТОВАРЫ */}
+      <Route path="/categories" element={<Categories />} />
+      {/* :slug - это динамический параметр (например, "laptops") */}
+      <Route path="/categories/:slug" element={<CategoryProducts />} />
+      
+      {/* :storeId - динамический параметр магазина (например, "5") */}
+      <Route path="/stores/:storeId/products" element={<StoreProducts />} />
+      
+      {/* ЗАЩИЩЕННЫЕ РОУТЫ */}
+      <Route path="/admin" element={<Admin />} loader={adminLoader} />
+      <Route path="/notifications" element={<Notifications />} loader={notificationsLoader} />
+      <Route path="/notifications/:id" element={<NotificationDetail />} loader={notificationDetailLoader} />
 
     </Route>
   )
 );
 
-// 2. В самом App возвращаем RouterProvider
 export default function App() {
   return <RouterProvider router={router} />
 }

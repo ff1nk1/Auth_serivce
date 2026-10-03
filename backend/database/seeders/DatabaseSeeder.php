@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
         // 1. Создаем все роли
         $this->call([
             RoleSeeder::class,
+            ShopSeeder::class,
         ]);
 
         $adminRole = Role::where('slug', 'admin')->first();

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CatalogController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\NotificationsController;
 
@@ -54,3 +55,15 @@ Route::middleware(
         Route::post('/notifications/{id}/resend',[NotificationsController::class,'resend']);
 
     });
+
+Route::middleware(
+    [
+        'cookie.token',
+        'auth:api',
+    ])->group(function (){
+        Route::get('/categories', [CatalogController::class,'show_categories']);
+        Route::get('/products/{cat_slug}',[CatalogController::class,'show_products_by_cat_id']);
+        Route::get('/products/stores/{store_id}',[CatalogController::class,'show_products_by_store_id']);
+
+    }
+    );
