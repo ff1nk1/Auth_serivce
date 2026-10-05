@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             ShopSeeder::class,
+            StockSeeder::class,
         ]);
 
         $adminRole = Role::where('slug', 'admin')->first();

@@ -29,7 +29,7 @@ export default function StoreProducts() {
 
     useEffect(() => {
         setLoading(true);
-        api.get(`/products/stores/${storeId}`, { params: searchParams })
+        api.get(`catalog/stores/${storeId}/products`, { params: searchParams })
             .then(response => {
                 setProducts(response.data.products.data);
                 

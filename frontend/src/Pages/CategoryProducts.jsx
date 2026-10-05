@@ -46,7 +46,7 @@ export default function CategoryProducts() {
     useEffect(() => {
         setLoading(true);
         // api.get сам возьмет ?page=2 из searchParams и отправит в Laravel
-        api.get(`/products/${slug}`, { params: searchParams })
+        api.get(`catalog/categories/${slug}/products`, { params: searchParams })
             .then(response => {
                 const data = response.data;
                 setCategory(data.category);

@@ -9,7 +9,7 @@ export default function Categories() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.get('/categories')
+        api.get('catalog/categories')
             .then(response => {
                 setCategories(response.data);
             })

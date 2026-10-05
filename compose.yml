@@ -195,6 +195,68 @@ services:
      
     networks:
       - app_network
+  kafka-order-consumer:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: laravel_kafka_order_consumer
+    restart: unless-stopped
+    command: php artisan kafka:consume:order-events
+    volumes:
+      - ./backend:/var/www
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_CACHE_DB: 1
+      DB_HOST: db
+      DB_PORT: 5432
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      kafka:
+        condition: service_started
+      app:
+        condition: service_started
+      mailhog:
+        condition: service_healthy 
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+  kafka-outbox-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: laravel_kafka_outbox_worker
+    restart: unless-stopped
+    command: php artisan kafka:outbox:work
+    volumes:
+      - ./backend:/var/www
+    env_file:
+      - ./backend/.env
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_CACHE_DB: 1
+      DB_HOST: db
+      DB_PORT: 5432
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      db:
+        condition: service_started
+      kafka:
+        condition: service_started
+      app:
+        condition: service_started
+    networks:
+      - app_network
 
 volumes:
   pgdata:
