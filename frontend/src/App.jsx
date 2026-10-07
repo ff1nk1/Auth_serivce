@@ -15,6 +15,7 @@ import NotificationDetail from './Pages/NotificationDetail'
 import Categories from './Pages/Categories'
 import CategoryProducts from './Pages/CategoryProducts'
 import StoreProducts from './Pages/StoreProducts'
+import ProductPage from './Pages/ProductPage'
 
 import AdminCategories from './Pages/AdminCategories'
 import AdminProducts from './Pages/AdminProducts'
@@ -33,6 +34,7 @@ const router = createBrowserRouter(
       <Route path="/categories" element={<Categories />} />
       <Route path="/categories/:slug" element={<CategoryProducts />} />
       <Route path="/stores/:storeId/products" element={<StoreProducts />} />
+      <Route path="/products/:id" element={<ProductPage />} />
       
       {/* ЗАЩИЩЕННЫЕ РОУТЫ АДМИНА/АНАЛИТИКА */}
       <Route path="/admin" element={<Admin />} loader={adminLoader} />

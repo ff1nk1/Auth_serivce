@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\UploadController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\AdminCatalogController;
@@ -19,6 +20,8 @@ Route::post('/refresh', [AuthController::class, 'refresh']);
 // 2. Все маршруты, требующие авторизации
 Route::middleware(['cookie.token', 'auth:api'])->group(function () {
     
+    Route::post('/get-upload-url', [UploadController::class, 'getUploadUrl']);   
+
     // -- Профиль пользователя --
     Route::get('/user', [AuthController::class, 'get_user']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -31,6 +34,7 @@ Route::middleware(['cookie.token', 'auth:api'])->group(function () {
         // По REST логичнее искать товары ВНУТРИ категории/магазина:
         Route::get('/categories/{cat_slug}/products', [CatalogController::class, 'show_products_by_cat_id']);
         Route::get('/stores/{store_id}/products', [CatalogController::class, 'show_products_by_store_id']);
+        Route::get('/products/{id}',[ProductController::class,'show']);
     });
 
     // -- Зона Аналитиков и Админов --
@@ -49,7 +53,6 @@ Route::middleware(['cookie.token', 'auth:api'])->group(function () {
         Route::patch('/users/{id}/role', [AdminController::class, 'changeRole']);
         
         // Управление каталогом (CRUD)
-        // apiResource автоматически создаст роуты: index (GET), store (POST), show (GET), update (PUT/PATCH), destroy (DELETE)
         Route::apiResource('products', ProductController::class);
         Route::apiResource('categories', AdminCatalogController::class);
         //Route::apiResource('stores', StoreController::class);

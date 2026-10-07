@@ -1,6 +1,28 @@
 import { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { api } from '../auth/api';
+
+// Автономная SVG-заглушка в формате Data URI (не зависит от внешних серверов)
+const PLACEHOLDER_IMAGE = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%239ca3af'%3EНет фото%3C/text%3E%3C/svg%3E";
+// Вспомогательная функция для корректного формирования URL изображения
+const formatImageUrl = (url) => {
+    if (!url) return PLACEHOLDER_IMAGE;
+    if (url.startsWith('data:')) return url;
+
+    // Если в БД случайно попал внутренний имя сервиса Docker (minio:9000)
+    if (url.includes('minio:9000')) {
+        return url.replace('http://minio:9000', 'https://127.0.0.1/storage');
+    }
+
+    // Если ссылка уже абсолютная (http/https)
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+    }
+
+    // Относительный путь (/storage/media/...) перенаправляем на HTTPS Nginx
+    const cleanPath = url.startsWith('/') ? url : `/${url}`;
+    return `https://127.0.0.1${cleanPath}`;
+};
 
 export default function CategoryProducts() {
     const { slug } = useParams();
@@ -9,7 +31,6 @@ export default function CategoryProducts() {
     const [category, setCategory] = useState(null);
     const [products, setProducts] = useState([]);
     
-    // НОВОЕ: состояние для хранения данных о страницах
     const [pagination, setPagination] = useState({
         current_page: 1,
         last_page: 1
@@ -21,40 +42,34 @@ export default function CategoryProducts() {
     const [maxPrice, setMaxPrice] = useState(searchParams.get('max_price') || '');
     const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'new');
 
-    // Функция применения фильтров (ВАЖНО: сбрасываем страницу на 1)
     const applyFilters = (e) => {
         e.preventDefault();
         setSearchParams({
             min_price: minPrice,
             max_price: maxPrice,
             sort: sortBy,
-            page: 1 // При новом фильтре всегда возвращаемся на первую страницу
+            page: 1
         });
     };
 
-    // НОВОЕ: Функция переключения страницы
     const handlePageChange = (newPage) => {
         setSearchParams(prevParams => {
-            prevParams.set('page', newPage); // Добавляем или обновляем параметр page в URL
+            prevParams.set('page', newPage);
             return prevParams;
         });
         
-        // Опционально: плавная прокрутка вверх при смене страницы
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     useEffect(() => {
         setLoading(true);
-        // api.get сам возьмет ?page=2 из searchParams и отправит в Laravel
         api.get(`catalog/categories/${slug}/products`, { params: searchParams })
             .then(response => {
                 const data = response.data;
                 setCategory(data.category);
                 
-                // Сохраняем массив товаров
                 setProducts(data.products.data);
                 
-                // Сохраняем информацию о пагинации
                 setPagination({
                     current_page: data.products.current_page,
                     last_page: data.products.last_page
@@ -63,13 +78,12 @@ export default function CategoryProducts() {
             .catch(error => console.error("Ошибка загрузки товаров:", error))
             .finally(() => setLoading(false));
     }, [slug, searchParams]);
-
+    console.log('Товары из API:', products.map(p => p.image_url));
     return (
         <div className="catalog-page">
             <div className="catalog-card products-container">
                 <div className="catalog-header">
                     <h1>{category ? category.name : 'Загрузка...'}</h1>
-                    {/* Можно вывести общее количество товаров, если нужно: data.products.total */}
                 </div>
                 
                 <form className="filters-form" onSubmit={applyFilters}>
@@ -113,16 +127,33 @@ export default function CategoryProducts() {
                             ) : null}
                             
                             {products.map(product => (
-                                <div key={product.id} className="product-card">
+                                <Link 
+                                    to={`/products/${product.id}`} 
+                                    key={product.id} 
+                                    className="product-card"
+                                >
+                                    {/* БЛОК КАРТИНКИ */}
+                                    <div className="product-image-container">
+                                        <img 
+                                            src={formatImageUrl(product.image_url)} 
+                                            alt={product.name}
+                                            className="product-image"
+                                            onError={(e) => {
+                                                e.target.onerror = null;
+                                                e.target.src = PLACEHOLDER_IMAGE;
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* ИНФОРМАЦИЯ О ТОВАРЕ */}
                                     <div className="product-info">
                                         <h3 className="product-title">{product.name}</h3>
                                         <div className="product-price">{product.price} ₽</div>
                                     </div>
-                                </div>
+                                </Link>
                             ))}
                         </div>
 
-                        {/* НОВОЕ: Блок пагинации (показываем, если страниц больше 1) */}
                         {pagination.last_page > 1 && (
                             <div className="pagination">
                                 <button 

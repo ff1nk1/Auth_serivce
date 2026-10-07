@@ -64,9 +64,8 @@ class OrderCreatedHandler
             }
 
             if ($allAvailable) {
-                // УСПЕХ: Отправляем ответ в топик stock.events
                 OutboxEvent::create([
-                    'topic'      => 'stock.events',  // Этот топик для order service
+                    'topic'      => 'stock.events', 
                     'event_type' => 'stock.reserved',
                     'payload'    => [
                         'order_id' => $orderId,

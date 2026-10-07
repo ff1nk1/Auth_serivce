@@ -122,9 +122,10 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - app
+      - frontend
+      - minio
     networks:
       - app_network
-
 
   kafka:
     image: apache/kafka:latest
@@ -258,10 +259,29 @@ services:
     networks:
       - app_network
 
+  minio:
+    image: cr.yandex/mirror/minio/minio:latest
+    container_name: my_app_minio
+    restart: unless-stopped
+    ports:
+      - '9000:9000'
+      - '8999:8999'
+    env_file:
+      - ./backend/.env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadminpassword}
+    volumes:
+      - 'minio_data:/data'
+    command: server /data --console-address ":8999"
+    networks:
+      - app_network
+
 volumes:
   pgdata:
   redisdata:
   mongodata:
+  minio_data:
 
 
 networks:
