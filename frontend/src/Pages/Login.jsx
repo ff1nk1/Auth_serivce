@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../auth/api' 
+import { authApi } from '../api/authClient' 
 import '../css/auth.css'
 
 export default function Login() {
@@ -17,7 +17,7 @@ export default function Login() {
         setErrors({})
 
         try {
-            await api.post('/login', {
+            await authApi.post('/login', {
                 email,
                 password,
             })

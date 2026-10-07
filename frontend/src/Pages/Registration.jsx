@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../auth/api' 
+import { authApi } from '../api/authClient' 
 import '../css/auth.css'
 
 export default function Registration() {
@@ -28,7 +28,7 @@ export default function Registration() {
         setErrors({})
 
         try {
-            await api.post('/registration', formData)
+            await authApi.post('/registration', formData)
 
             // Перенаправление на страницу входа после успешной регистрации
             navigate('/login')

@@ -1,0 +1,124 @@
+services:
+  php-base:
+    build:
+      context: ../infra/php-base
+      dockerfile: Dockerfile
+    image: php-project-php-base:8.5
+    entrypoint: ["true"]
+    restart: "no"
+    network_mode: none
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        "php-project-php-base:8.5": "service:php-base"
+    image: notification_service:local
+    pull_policy: never
+    container_name: notification_service_app
+    restart: unless-stopped
+    # Internal only — reached via auth_service gateway
+    expose:
+      - "8003"
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      # Unique hostnames on shared php_project_net (service name "db"/"mongodb" clash across stacks)
+      DB_HOST: notification_service_db
+      DB_PORT: 5432
+      MONGODB_HOST: notification_service_mongodb
+      MONGODB_PORT: 27017
+      KAFKA_BROKERS: kafka:29092
+      MAIL_HOST: notification_service_mailhog
+      MAIL_PORT: 1025
+    depends_on:
+      db:
+        condition: service_started
+      mongodb:
+        condition: service_started
+      mailhog:
+        condition: service_healthy
+    networks:
+      - php_project_net
+
+  db:
+    image: postgres:16-alpine
+    container_name: notification_service_db
+    restart: unless-stopped
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: laravel
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - notification_pgdata:/var/lib/postgresql/data
+    networks:
+      - php_project_net
+
+  mongodb:
+    image: mongo:7.0
+    container_name: notification_service_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: notification_db
+    volumes:
+      - notification_mongodata:/data/db
+    networks:
+      - php_project_net
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: notification_service_mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - php_project_net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "1025"]
+      interval: 3s
+      timeout: 3s
+      retries: 2
+
+  kafka-consumer:
+    image: notification_service:local
+    pull_policy: never
+    container_name: notification_kafka_consumer
+    restart: unless-stopped
+    command: php artisan kafka:consume:user-events
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      DB_HOST: notification_service_db
+      DB_PORT: 5432
+      MONGODB_HOST: notification_service_mongodb
+      MONGODB_PORT: 27017
+      KAFKA_BROKERS: kafka:29092
+      MAIL_HOST: notification_service_mailhog
+      MAIL_PORT: 1025
+    depends_on:
+      - app
+      - mongodb
+      - mailhog
+      - db
+    networks:
+      - php_project_net
+
+volumes:
+  notification_pgdata:
+  notification_mongodata:
+
+networks:
+  php_project_net:
+    external: true
+    name: php_project_net

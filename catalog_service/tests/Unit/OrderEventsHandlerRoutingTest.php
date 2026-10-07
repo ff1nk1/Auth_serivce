@@ -1,0 +1,66 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Kafka\Handlers\OrderCreatedHandler;
+use App\Kafka\Handlers\StockReleaseHandler;
+use App\Kafka\MainHandlers\OrderEventsHandler;
+use Junges\Kafka\Contracts\ConsumerMessage;
+use Mockery;
+use Tests\TestCase;
+
+class OrderEventsHandlerRoutingTest extends TestCase
+{
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
+    }
+
+    public function test_routes_order_created_to_order_created_handler(): void
+    {
+        $message = Mockery::mock(ConsumerMessage::class);
+        $message->shouldReceive('getHeaders')->andReturn(['event-type' => 'order.created']);
+
+        $orderHandler = Mockery::mock(OrderCreatedHandler::class);
+        $orderHandler->shouldReceive('__invoke')->once()->with($message);
+
+        $this->app->instance(OrderCreatedHandler::class, $orderHandler);
+
+        (new OrderEventsHandler)($message);
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_routes_stock_release_to_stock_release_handler(): void
+    {
+        $message = Mockery::mock(ConsumerMessage::class);
+        $message->shouldReceive('getHeaders')->andReturn(['event-type' => 'stock.release_requested']);
+
+        $releaseHandler = Mockery::mock(StockReleaseHandler::class);
+        $releaseHandler->shouldReceive('__invoke')->once()->with($message);
+
+        $this->app->instance(StockReleaseHandler::class, $releaseHandler);
+
+        (new OrderEventsHandler)($message);
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_ignores_unknown_event_type(): void
+    {
+        $message = Mockery::mock(ConsumerMessage::class);
+        $message->shouldReceive('getHeaders')->andReturn(['event-type' => 'something.else']);
+
+        $orderHandler = Mockery::mock(OrderCreatedHandler::class);
+        $orderHandler->shouldReceive('__invoke')->never();
+        $this->app->instance(OrderCreatedHandler::class, $orderHandler);
+
+        $releaseHandler = Mockery::mock(StockReleaseHandler::class);
+        $releaseHandler->shouldReceive('__invoke')->never();
+        $this->app->instance(StockReleaseHandler::class, $releaseHandler);
+
+        (new OrderEventsHandler)($message);
+
+        $this->addToAssertionCount(1);
+    }
+}
+

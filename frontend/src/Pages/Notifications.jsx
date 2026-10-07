@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import '../css/notifications.css';
-import { api } from '../auth/api';
+import { notificationApi } from '../api/notificationClient';
 import { Link } from 'react-router-dom'; 
 // Пример статусов
 const STATUS_OPTIONS = [
@@ -44,7 +44,7 @@ export const NotificationsPage = () => {
             };
 
             
-            const response = await api.get('/notifications', { params });
+            const response = await notificationApi.get('/notifications', { params });
             const data = response.data;
 
             // Заполняем полученные данные из Laravel Paginator

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../auth/api'; 
+import { catalogApi } from '../api/catalogClient'; 
 import '../css/catalog.css'; 
 
 
@@ -9,7 +9,7 @@ export default function Categories() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.get('catalog/categories')
+        catalogApi.get('catalog/categories')
             .then(response => {
                 setCategories(response.data);
             })

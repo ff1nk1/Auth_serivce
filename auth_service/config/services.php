@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'catalog' => [
+        'url' => env('CATALOG_SERVICE_URL', 'http://catalog_service_app:8002'),
+    ],
+
+    'notification' => [
+        'url' => env('NOTIFICATION_SERVICE_URL', 'http://notification_service_app:8003'),
+    ],
+
 ];

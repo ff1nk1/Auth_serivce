@@ -8,7 +8,9 @@
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.17",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "mateusjunges/laravel-kafka": "^2.12",
+        "mongodb/laravel-mongodb": "^5.11"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -79,6 +81,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "platform": {
+            "ext-mongodb": "2.1.7"
         }
     },
     "minimum-stability": "stable",

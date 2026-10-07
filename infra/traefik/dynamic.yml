@@ -1,0 +1,29 @@
+# File provider — avoids Docker API version mismatch with modern Docker Engine.
+# Only frontend + admin are exposed. auth_service is NOT routed here.
+
+http:
+  routers:
+    admin:
+      rule: Host(`app.localhost`) && (PathPrefix(`/admin`) || PathPrefix(`/livewire`) || PathPrefix(`/css/filament`) || PathPrefix(`/js/filament`) || PathPrefix(`/fonts/filament`))
+      entryPoints:
+        - web
+      service: admin
+      priority: 100
+
+    frontend:
+      rule: Host(`app.localhost`)
+      entryPoints:
+        - web
+      service: frontend
+      priority: 1
+
+  services:
+    frontend:
+      loadBalancer:
+        servers:
+          - url: http://frontend_nginx:80
+
+    admin:
+      loadBalancer:
+        servers:
+          - url: http://admin_frontend:8000

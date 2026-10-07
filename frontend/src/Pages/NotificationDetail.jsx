@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLoaderData, Link } from 'react-router-dom';
-import { api } from '../auth/api';
+import { notificationApi } from '../api/notificationClient';
 import '../css/notifications.css';
 
 export default function NotificationDetail() {
@@ -17,7 +17,7 @@ export default function NotificationDetail() {
 
     try {
       // Запрос к ручке бэкенда для повторной публикации в Kafka/отправки
-      await api.post(`/notifications/${id}/resend`);
+      await notificationApi.post(`/notifications/${id}/resend`);
       setResendStatus({
         type: 'success',
         message: 'Запрос на повторную отправку успешно отправлен!',

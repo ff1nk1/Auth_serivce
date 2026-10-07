@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { api } from '../auth/api';
+import { catalogApi } from '../api/catalogClient';
 
 export default function StoreProducts() {
     const { storeId } = useParams(); 
@@ -29,7 +29,7 @@ export default function StoreProducts() {
 
     useEffect(() => {
         setLoading(true);
-        api.get(`catalog/stores/${storeId}/products`, { params: searchParams })
+        catalogApi.get(`catalog/stores/${storeId}/products`, { params: searchParams })
             .then(response => {
                 setProducts(response.data.products.data);
                 

@@ -1,0 +1,89 @@
+services:
+  # Built automatically when building app (additional_contexts service:).
+  # Exits immediately on `compose up` — image-only helper.
+  php-base:
+    build:
+      context: ../infra/php-base
+      dockerfile: Dockerfile
+    image: php-project-php-base:8.5
+    entrypoint: ["true"]
+    restart: "no"
+    network_mode: none
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        "php-project-php-base:8.5": "service:php-base"
+    image: auth_service:local
+    pull_policy: never
+    container_name: auth_service_app
+    restart: unless-stopped
+    # Not exposed via Traefik or host — only Docker network (frontend nginx / admin)
+    expose:
+      - "8001"
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      # Unique hostnames on shared php_project_net (service name "db" clashes across stacks)
+      DB_HOST: auth_service_db
+      DB_PORT: 5432
+      REDIS_HOST: auth_service_redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:29092
+      CATALOG_SERVICE_URL: http://catalog_service_app:8002
+      NOTIFICATION_SERVICE_URL: http://notification_service_app:8003
+      SESSION_DOMAIN: null
+      JWT_COOKIE_DOMAIN: ""
+      APP_URL: http://auth_service_app:8001
+    depends_on:
+      db:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - php_project_net
+
+  db:
+    image: postgres:16-alpine
+    container_name: auth_service_db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: laravel
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - auth_pgdata:/var/lib/postgresql/data
+    networks:
+      - php_project_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: auth_service_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - auth_redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - php_project_net
+
+volumes:
+  auth_pgdata:
+  auth_redisdata:
+
+networks:
+  php_project_net:
+    external: true
+    name: php_project_net

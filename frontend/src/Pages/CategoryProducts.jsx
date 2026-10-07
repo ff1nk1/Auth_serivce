@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { api } from '../auth/api';
+import { catalogApi } from '../api/catalogClient';
 
 // Автономная SVG-заглушка в формате Data URI (не зависит от внешних серверов)
 const PLACEHOLDER_IMAGE = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%239ca3af'%3EНет фото%3C/text%3E%3C/svg%3E";
@@ -63,7 +63,7 @@ export default function CategoryProducts() {
 
     useEffect(() => {
         setLoading(true);
-        api.get(`catalog/categories/${slug}/products`, { params: searchParams })
+        catalogApi.get(`catalog/categories/${slug}/products`, { params: searchParams })
             .then(response => {
                 const data = response.data;
                 setCategory(data.category);

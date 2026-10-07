@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../auth/api' 
+import { authApi } from '../api/authClient' 
 import '../css/profile.css';
 
 export default function Profile({ user }) {
@@ -24,7 +24,7 @@ export default function Profile({ user }) {
     try {
       // Используем твой api, он сам подставит baseURL, куки и токены (withCredentials: true)
       // Если бэкенд вернет 401, твой интерсептор сам обновит сессию и повторит этот запрос!
-      await api.patch('/profile', { [field]: value });
+      await authApi.patch('/profile', { [field]: value });
 
       setStatus({ message: 'Данные успешно обновлены!', type: 'success' });
     } catch (error) {
@@ -39,7 +39,7 @@ export default function Profile({ user }) {
   // --- Отредактировано: выход из аккаунта ---
   const logout = async () => {
     try {
-      await api.post('/logout', {});
+      await authApi.post('/logout', {});
     } catch (error) {
       // Даже если сервер ответил ошибкой — всё равно выкидываем пользователя,
       // чтобы он не застрял в "полуавторизованном" состоянии.
@@ -59,7 +59,7 @@ export default function Profile({ user }) {
     setPasswordStatus({ message: '', type: '' });
 
     try {
-      await api.patch('/profile/password', {
+      await authApi.patch('/profile/password', {
         current_password: currentPassword,
         new_password: newPassword,
       });

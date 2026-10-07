@@ -1,6 +1,6 @@
 // ProfilePage.jsx
 import { useEffect, useState } from 'react';
-import { api } from '../auth/api' 
+import { authApi } from '../api/authClient' 
 import Profile from './Profile'; 
 
 export default function ProfilePage() {
@@ -11,7 +11,7 @@ export default function ProfilePage() {
     // 1. Как только пользователь заходит на /profile, срабатывает этот useEffect
     // 2. Делаем GET запрос на бэкенд, чтобы получить текущего юзера
     // (Укажи здесь правильный URL твоего бэкенда, например '/api/user' или '/me')
-    api.get('/user') 
+    authApi.get('/user') 
       .then((response) => {
         // 3. Бэкенд ответил 200 OK. Сохраняем пользователя в стейт
         setUser(response.data);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../auth/api';
+import { catalogApi } from '../api/catalogClient';
 import '../css/product_page.css';
 
 export default function ProductPage() {
@@ -13,7 +13,7 @@ export default function ProductPage() {
 
     useEffect(() => {
         setLoading(true);
-        api.get(`catalog/products/${id}`)
+        catalogApi.get(`catalog/products/${id}`)
             .then(response => {
                 setProduct(response.data.product);
             })
