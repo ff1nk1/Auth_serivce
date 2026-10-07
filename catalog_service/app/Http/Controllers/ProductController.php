@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use App\Services\ProductService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
 
@@ -17,10 +18,13 @@ class ProductController extends Controller
     ) {}
 
     // GET /api/admin/products
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        // Подгружаем связанные сущности для админской таблицы
-        return response()->json(Product::with(['category', 'store'])->paginate(20));
+        $perPage = max(1, min(100, (int) $request->input('per_page', 20)));
+
+        return response()->json(
+            Product::with(['category', 'store'])->paginate($perPage)
+        );
     }
 
     // POST /api/admin/products

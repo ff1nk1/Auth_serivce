@@ -32,6 +32,17 @@ return Application::configure(basePath: dirname(__DIR__))
             'cookie.token' => AddTokenFromCookie::class,
             'ensure.token' => EnsureValidAccessToken::class,
         ]);
+
+        // Authenticate is sorted via AuthenticatesRequests contract — without this,
+        // auth:api runs before ensure.token and silent refresh never executes.
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            prepend: EnsureValidAccessToken::class,
+        );
+        $middleware->prependToPriorityList(
+            before: EnsureValidAccessToken::class,
+            prepend: AddTokenFromCookie::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { catalogApi } from '../api/catalogClient';
+import { formatImageUrl, PLACEHOLDER_IMAGE } from '../utils/formatImageUrl';
 import '../css/product_page.css';
 
 export default function ProductPage() {
@@ -51,16 +52,17 @@ export default function ProductPage() {
                 </button>
                 
                 <div className="product-full-card">
-                    {/* Вывод картинки, если поле image_url не пустое */}
-                    {product.image_url && (
-                        <div className="product-image-container">
-                            <img 
-                                src={product.image_url} 
-                                alt={product.name} 
-                                className="product-image" 
-                            />
-                        </div>
-                    )}
+                    <div className="product-image-container">
+                        <img
+                            src={formatImageUrl(product.image_url)}
+                            alt={product.name}
+                            className="product-image"
+                            onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = PLACEHOLDER_IMAGE;
+                            }}
+                        />
+                    </div>
 
                     <h1>{product.name}</h1>
                     <div className="product-price-large">{product.price} ₽</div>

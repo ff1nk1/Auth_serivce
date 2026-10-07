@@ -56,8 +56,17 @@ class Login extends BaseLogin
             ]
         );
 
+        // Preserve API JWT pair across session ID rotation (regenerate can drop them).
+        $accessToken = session('auth_access_token');
+        $refreshToken = session('auth_refresh_token');
+
         Auth::guard(Filament::getAuthGuard())->login($user, (bool) ($data['remember'] ?? false));
         session()->regenerate();
+
+        session([
+            'auth_access_token' => $accessToken,
+            'auth_refresh_token' => $refreshToken,
+        ]);
 
         return app(LoginResponse::class);
     }

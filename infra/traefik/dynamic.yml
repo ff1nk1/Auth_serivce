@@ -1,20 +1,42 @@
 # File provider — avoids Docker API version mismatch with modern Docker Engine.
 # Only frontend + admin are exposed. auth_service is NOT routed here.
 
+tls:
+  certificates:
+    - certFile: /certs/app.localhost.pem
+      keyFile: /certs/app.localhost-key.pem
+
 http:
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
   routers:
+    http-redirect:
+      rule: Host(`app.localhost`)
+      entryPoints:
+        - web
+      middlewares:
+        - redirect-to-https
+      service: frontend
+      priority: 1
+
     admin:
       rule: Host(`app.localhost`) && (PathPrefix(`/admin`) || PathPrefix(`/livewire`) || PathPrefix(`/css/filament`) || PathPrefix(`/js/filament`) || PathPrefix(`/fonts/filament`))
       entryPoints:
-        - web
+        - websecure
       service: admin
+      tls: {}
       priority: 100
 
     frontend:
       rule: Host(`app.localhost`)
       entryPoints:
-        - web
+        - websecure
       service: frontend
+      tls: {}
       priority: 1
 
   services:

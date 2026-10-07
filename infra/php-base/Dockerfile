@@ -34,7 +34,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         mongodb \
         pcntl \
         bcmath \
-        zip
+        zip \
+        intl
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

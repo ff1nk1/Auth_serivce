@@ -24,13 +24,16 @@ services:
       - --providers.file.filename=/etc/traefik/dynamic.yml
       - --providers.file.watch=true
       - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
       - --api.dashboard=true
       - --api.insecure=true
     ports:
       - "80:80"
+      - "443:443"
       - "8081:8080"
     volumes:
       - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./traefik/certs:/certs:ro
     networks:
       - php_project_net
 

@@ -27,7 +27,16 @@ class EnsureValidAccessToken
             return $next($request);
         }
 
-        $refreshToken = $request->cookie('refresh_token');
+        $refreshToken = $request->cookie('refresh_token')
+            ?? $request->cookies->get('refresh_token');
+
+        if (! $refreshToken) {
+            $raw = $request->headers->get('Cookie');
+            if (is_string($raw) && preg_match('/(?:^|;\s*)refresh_token=([^;]+)/', $raw, $m)) {
+                $refreshToken = urldecode($m[1]);
+            }
+        }
+
         if (! $refreshToken) {
             return $next($request);
         }
@@ -51,7 +60,7 @@ class EnsureValidAccessToken
     {
         $refreshTtl = (int) config('jwt.refresh_ttl');
         $cookieMinutes = (int) ceil($refreshTtl / 60);
-        $secure = app()->environment('production');
+        $secure = (bool) config('jwt.cookie_secure');
         $domain = config('jwt.cookie_domain');
 
         $response->headers->setCookie(cookie(

@@ -16,10 +16,13 @@ class AdminCatalogController extends Controller
     ) {}
 
     // GET /api/admin/categories
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        // В админке отдаем без кэша, с пагинацией и связью с родителем
-        return response()->json(Category::with('parent')->paginate(20));
+        $perPage = max(1, min(100, (int) $request->input('per_page', 20)));
+
+        return response()->json(
+            Category::with('parent')->paginate($perPage)
+        );
     }
 
     // POST /api/admin/categories

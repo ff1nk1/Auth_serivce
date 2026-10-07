@@ -1,28 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { catalogApi } from '../api/catalogClient';
-
-// Автономная SVG-заглушка в формате Data URI (не зависит от внешних серверов)
-const PLACEHOLDER_IMAGE = "data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='100%25' height='100%25' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%239ca3af'%3EНет фото%3C/text%3E%3C/svg%3E";
-// Вспомогательная функция для корректного формирования URL изображения
-const formatImageUrl = (url) => {
-    if (!url) return PLACEHOLDER_IMAGE;
-    if (url.startsWith('data:')) return url;
-
-    // Если в БД случайно попал внутренний имя сервиса Docker (minio:9000)
-    if (url.includes('minio:9000')) {
-        return url.replace('http://minio:9000', 'https://127.0.0.1/storage');
-    }
-
-    // Если ссылка уже абсолютная (http/https)
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
-    }
-
-    // Относительный путь (/storage/media/...) перенаправляем на HTTPS Nginx
-    const cleanPath = url.startsWith('/') ? url : `/${url}`;
-    return `https://127.0.0.1${cleanPath}`;
-};
+import { formatImageUrl, PLACEHOLDER_IMAGE } from '../utils/formatImageUrl';
 
 export default function CategoryProducts() {
     const { slug } = useParams();
@@ -78,7 +57,7 @@ export default function CategoryProducts() {
             .catch(error => console.error("Ошибка загрузки товаров:", error))
             .finally(() => setLoading(false));
     }, [slug, searchParams]);
-    console.log('Товары из API:', products.map(p => p.image_url));
+
     return (
         <div className="catalog-page">
             <div className="catalog-card products-container">

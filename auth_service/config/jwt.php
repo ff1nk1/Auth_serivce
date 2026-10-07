@@ -37,6 +37,19 @@ return [
     | reject Domain=.localhost). Set only if using a real shared parent domain.
     */
     'cookie_domain' => env('JWT_COOKIE_DOMAIN') ?: null,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cookie Secure flag
+    |--------------------------------------------------------------------------
+    | When true (or when APP_ENV=production), JWT cookies are marked Secure.
+    | Enable for local HTTPS (e.g. https://app.localhost via Traefik).
+    */
+    'cookie_secure' => filter_var(
+        env('JWT_COOKIE_SECURE', env('APP_ENV') === 'production' ? 'true' : 'false'),
+        FILTER_VALIDATE_BOOLEAN
+    ),
 ];
+
 
 

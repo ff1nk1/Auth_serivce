@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\BuildsApiTablePaginator;
 use App\Services\AuthApiClient;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -11,10 +12,11 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ManageUsers extends Page implements HasTable
 {
+    use BuildsApiTablePaginator;
     use InteractsWithTable;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
@@ -35,7 +37,14 @@ class ManageUsers extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->records(fn (): Collection => $this->fetchUsers())
+            ->records(function (int|string $page, int|string $recordsPerPage): LengthAwarePaginator {
+                $perPage = $this->resolvePerPage($recordsPerPage);
+                $payload = app(AuthApiClient::class)->getUsers(page: (int) $page, perPage: $perPage);
+
+                return $this->apiPaginator($payload, $page, $perPage);
+            })
+            ->paginated([10, 15, 25, 50])
+            ->defaultPaginationPageOption(15)
             ->columns([
                 TextColumn::make('id')->label('ID'),
                 TextColumn::make('name')->label('Name')->searchable(),
@@ -57,15 +66,5 @@ class ManageUsers extends Page implements HasTable
                         Notification::make()->title('Role updated')->success()->send();
                     }),
             ]);
-    }
-
-    private function fetchUsers(): Collection
-    {
-        $payload = app(AuthApiClient::class)->getUsers();
-        $rows = $payload['data'] ?? $payload;
-
-        return collect($rows)
-            ->map(fn ($row) => is_array($row) ? $row : (array) $row)
-            ->keyBy('id');
     }
 }

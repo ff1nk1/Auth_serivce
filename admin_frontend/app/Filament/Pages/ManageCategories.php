@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Concerns\BuildsApiTablePaginator;
 use App\Services\AuthApiClient;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
@@ -11,10 +12,11 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ManageCategories extends Page implements HasTable
 {
+    use BuildsApiTablePaginator;
     use InteractsWithTable;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-tag';
@@ -30,7 +32,14 @@ class ManageCategories extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->records(fn (): Collection => $this->fetchCategories())
+            ->records(function (int|string $page, int|string $recordsPerPage): LengthAwarePaginator {
+                $perPage = $this->resolvePerPage($recordsPerPage);
+                $payload = app(AuthApiClient::class)->getCategories((int) $page, $perPage);
+
+                return $this->apiPaginator($payload, $page, $perPage);
+            })
+            ->paginated([10, 15, 25, 50])
+            ->defaultPaginationPageOption(15)
             ->columns([
                 TextColumn::make('id')->label('ID'),
                 TextColumn::make('name')->label('Name'),
@@ -72,15 +81,5 @@ class ManageCategories extends Page implements HasTable
                         Notification::make()->title('Category deleted')->success()->send();
                     }),
             ]);
-    }
-
-    private function fetchCategories(): Collection
-    {
-        $payload = app(AuthApiClient::class)->getCategories();
-        $rows = $payload['data'] ?? $payload;
-
-        return collect($rows)
-            ->map(fn ($row) => is_array($row) ? $row : (array) $row)
-            ->keyBy('id');
     }
 }

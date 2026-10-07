@@ -9,7 +9,6 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -47,7 +46,6 @@ class AuthController extends Controller
     public function refresh(Request $request)
     {
         $oldRefreshToken = $request->cookie('refresh_token');
-        Log::debug('олд рефреш - ', ['old_refresh' => $oldRefreshToken]);
         $tokens = $this->authService->refreshTokens($oldRefreshToken);
 
         if (! $tokens) {
@@ -102,7 +100,7 @@ class AuthController extends Controller
     {
         $refreshTtl = (int) config('jwt.refresh_ttl');
         $cookieMinutes = (int) ceil($refreshTtl / 60);
-        $secure = app()->environment('production');
+        $secure = (bool) config('jwt.cookie_secure');
         $domain = config('jwt.cookie_domain');
 
         return response()->json(['message' => 'Успешно.'])
