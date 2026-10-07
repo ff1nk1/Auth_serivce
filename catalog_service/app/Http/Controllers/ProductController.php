@@ -22,9 +22,13 @@ class ProductController extends Controller
     {
         $perPage = max(1, min(100, (int) $request->input('per_page', 20)));
 
-        return response()->json(
-            Product::with(['category', 'store'])->paginate($perPage)
-        );
+        $query = Product::with(['category', 'store']);
+
+        $query->when($request->filled('store_id'), function ($q) use ($request) {
+            $q->where('store_id', (int) $request->input('store_id'));
+        });
+
+        return response()->json($query->paginate($perPage));
     }
 
     // POST /api/admin/products

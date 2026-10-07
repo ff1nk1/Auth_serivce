@@ -62,5 +62,23 @@ class OrderEventsHandlerRoutingTest extends TestCase
 
         $this->addToAssertionCount(1);
     }
+
+    public function test_ignores_missing_event_type_header(): void
+    {
+        $message = Mockery::mock(ConsumerMessage::class);
+        $message->shouldReceive('getHeaders')->andReturn([]);
+
+        $orderHandler = Mockery::mock(OrderCreatedHandler::class);
+        $orderHandler->shouldReceive('__invoke')->never();
+        $this->app->instance(OrderCreatedHandler::class, $orderHandler);
+
+        $releaseHandler = Mockery::mock(StockReleaseHandler::class);
+        $releaseHandler->shouldReceive('__invoke')->never();
+        $this->app->instance(StockReleaseHandler::class, $releaseHandler);
+
+        (new OrderEventsHandler)($message);
+
+        $this->addToAssertionCount(1);
+    }
 }
 

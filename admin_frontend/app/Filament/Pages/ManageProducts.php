@@ -6,6 +6,7 @@ use App\Filament\Concerns\BuildsApiTablePaginator;
 use App\Services\AuthApiClient;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -14,6 +15,8 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Enums\FiltersLayout;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -36,9 +39,13 @@ class ManageProducts extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->records(function (int|string $page, int|string $recordsPerPage): LengthAwarePaginator {
+            ->records(function (int|string $page, int|string $recordsPerPage, ?array $filters): LengthAwarePaginator {
                 $perPage = $this->resolvePerPage($recordsPerPage);
-                $payload = app(AuthApiClient::class)->getProducts((int) $page, $perPage);
+                $storeId = filled($filters['store_id']['value'] ?? null)
+                    ? (int) $filters['store_id']['value']
+                    : null;
+
+                $payload = app(AuthApiClient::class)->getProducts((int) $page, $perPage, $storeId);
 
                 return $this->apiPaginator($payload, $page, $perPage);
             })
@@ -53,9 +60,16 @@ class ManageProducts extends Page implements HasTable
                     ->extraImgAttributes(['loading' => 'lazy']),
                 TextColumn::make('name')->label('Name'),
                 TextColumn::make('price')->label('Price'),
-                TextColumn::make('store_id')->label('Store'),
+                TextColumn::make('store.name')
+                    ->label('Store')
+                    ->placeholder(fn (array $record): string => (string) ($record['store_id'] ?? '—')),
                 TextColumn::make('category_id')->label('Category'),
             ])
+            ->filters([
+                SelectFilter::make('store_id')
+                    ->label('Store')
+                    ->options(fn (): array => app(AuthApiClient::class)->storeOptions()),
+            ], layout: FiltersLayout::AboveContent)
             ->headerActions([
                 Action::make('create')
                     ->label('Create')
@@ -64,6 +78,7 @@ class ManageProducts extends Page implements HasTable
                         $payload = $this->prepareProductPayload($data);
                         app(AuthApiClient::class)->createProduct($payload);
                         Notification::make()->title('Product created')->success()->send();
+                        $this->resetTable();
                     }),
             ])
             ->recordActions([
@@ -82,6 +97,7 @@ class ManageProducts extends Page implements HasTable
                         $payload = $this->prepareProductPayload($data, $record['image_url'] ?? null);
                         app(AuthApiClient::class)->updateProduct((int) $record['id'], $payload);
                         Notification::make()->title('Product updated')->success()->send();
+                        $this->resetTable();
                     }),
                 Action::make('delete')
                     ->label('Delete')
@@ -90,6 +106,7 @@ class ManageProducts extends Page implements HasTable
                     ->action(function (array $record): void {
                         app(AuthApiClient::class)->deleteProduct((int) $record['id']);
                         Notification::make()->title('Product deleted')->success()->send();
+                        $this->resetTable();
                     }),
             ]);
     }
@@ -99,7 +116,11 @@ class ManageProducts extends Page implements HasTable
         return [
             TextInput::make('name')->required(),
             TextInput::make('price')->numeric()->required(),
-            TextInput::make('store_id')->numeric()->required()->label('Store ID'),
+            Select::make('store_id')
+                ->label('Store')
+                ->options(fn (): array => app(AuthApiClient::class)->storeOptions())
+                ->searchable()
+                ->required(),
             TextInput::make('category_id')->numeric()->required()->label('Category ID'),
             Textarea::make('description'),
             FileUpload::make('image')

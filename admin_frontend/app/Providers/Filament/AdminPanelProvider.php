@@ -37,6 +37,7 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Pages\ManageUsers::class,
                 \App\Filament\Pages\ManageCategories::class,
                 \App\Filament\Pages\ManageProducts::class,
+                \App\Filament\Pages\ManageStocks::class,
             ])
             ->widgets([
                 AccountWidget::class,

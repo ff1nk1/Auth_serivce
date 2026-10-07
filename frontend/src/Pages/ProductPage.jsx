@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { catalogApi } from '../api/catalogClient';
 import { formatImageUrl, PLACEHOLDER_IMAGE } from '../utils/formatImageUrl';
 import '../css/product_page.css';
@@ -73,7 +73,12 @@ export default function ProductPage() {
                             <span className="badge">Категория: {product.category.name}</span>
                         )}
                         {product.store && (
-                            <span className="badge">Магазин: {product.store.name}</span>
+                            <Link
+                                to={`/stores/${product.store.id || product.store_id}/products`}
+                                className="badge"
+                            >
+                                Магазин: {product.store.name}
+                            </Link>
                         )}
                         <span className="badge">Артикул: #{product.id}</span>
                     </div>

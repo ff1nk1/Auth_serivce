@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Store;
 use App\Services\CatalogService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -66,20 +67,23 @@ class CatalogController extends Controller
     // GET /api/catalog/stores/{store_id}/products
     public function show_products_by_store_id(Request $request, int $store_id): JsonResponse
     {
+        $store = Store::findOrFail($store_id);
+
         $query = Product::with(['store', 'category'])
             ->where('store_id', $store_id);
 
-        $products = $this->applyFilters($query, $request)->paginate(20);
+        $products = $this->applyFilters($query, $request, $store_id)->paginate(20);
 
         return response()->json([
-            'products' => $products
+            'store' => $store,
+            'products' => $products,
         ]);
     }
 
     /**
      * Приватный метод для фильтрации товаров на витрине
      */
-    private function applyFilters(Builder $query, Request $request): Builder
+    private function applyFilters(Builder $query, Request $request, ?int $storeId = null): Builder
     {
         $query->when($request->input('search'), function (Builder $q, $search) {
             $q->where('name', 'like', "%{$search}%");
@@ -93,12 +97,27 @@ class CatalogController extends Controller
             $q->where('price', '<=', $maxPrice);
         });
 
+        if ($request->input('status') === 'in_stock') {
+            $query->whereExists(function ($sub) use ($storeId) {
+                $sub->selectRaw('1')
+                    ->from('stocks')
+                    ->whereColumn('stocks.product_id', 'products.id')
+                    ->whereRaw('(stocks.quantity - stocks.reserved) > 0');
+
+                if ($storeId !== null) {
+                    $sub->where('stocks.store_id', $storeId);
+                } else {
+                    $sub->whereColumn('stocks.store_id', 'products.store_id');
+                }
+            });
+        }
+
         $sort = $request->input('sort', 'new');
-        
+
         match ($sort) {
-            'price_asc'  => $query->orderBy('price', 'asc'),
+            'price_asc' => $query->orderBy('price', 'asc'),
             'price_desc' => $query->orderBy('price', 'desc'),
-            default      => $query->orderBy('created_at', 'desc'),
+            default => $query->orderBy('created_at', 'desc'),
         };
 
         return $query;

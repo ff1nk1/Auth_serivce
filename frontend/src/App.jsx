@@ -12,6 +12,7 @@ import Notifications from './Pages/Notifications'
 import NotificationDetail from './Pages/NotificationDetail'
 import Categories from './Pages/Categories'
 import CategoryProducts from './Pages/CategoryProducts'
+import Stores from './Pages/Stores'
 import StoreProducts from './Pages/StoreProducts'
 import ProductPage from './Pages/ProductPage'
 
@@ -28,6 +29,7 @@ const router = createBrowserRouter(
       <Route path="/profile" element={<ProfilePage />} loader={requireAuth} />
       <Route path="/categories" element={<Categories />} loader={requireAuth} />
       <Route path="/categories/:slug" element={<CategoryProducts />} loader={requireAuth} />
+      <Route path="/stores" element={<Stores />} loader={requireAuth} />
       <Route path="/stores/:storeId/products" element={<StoreProducts />} loader={requireAuth} />
       <Route path="/products/:id" element={<ProductPage />} loader={requireAuth} />
 

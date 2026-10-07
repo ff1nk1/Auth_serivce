@@ -23,6 +23,9 @@ export default function Categories() {
                 <div className="catalog-header">
                     <h1>Каталог</h1>
                     <p>Выберите интересующий вас раздел</p>
+                    <p>
+                        <Link to="/stores" className="category-link">Смотреть магазины →</Link>
+                    </p>
                 </div>
 
                 {loading ? (

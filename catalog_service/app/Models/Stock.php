@@ -33,6 +33,13 @@ class Stock extends Model
     ];
 
     /**
+     * @var list<string>
+     */
+    protected $appends = [
+        'available',
+    ];
+
+    /**
      * Получить товар, к которому относится этот остаток.
      */
     public function product(): BelongsTo

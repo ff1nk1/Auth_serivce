@@ -102,12 +102,18 @@ class AuthApiClient
         $this->send('delete', "/admin/categories/{$id}")->throw();
     }
 
-    public function getProducts(int $page = 1, int $perPage = 15): array
+    public function getProducts(int $page = 1, int $perPage = 15, ?int $storeId = null): array
     {
-        return $this->send('get', '/admin/products', [
+        $query = [
             'page' => $page,
             'per_page' => $perPage,
-        ])->throw()->json();
+        ];
+
+        if ($storeId !== null) {
+            $query['store_id'] = $storeId;
+        }
+
+        return $this->send('get', '/admin/products', $query)->throw()->json();
     }
 
     public function createProduct(array $data): array
@@ -123,6 +129,52 @@ class AuthApiClient
     public function deleteProduct(int $id): void
     {
         $this->send('delete', "/admin/products/{$id}")->throw();
+    }
+
+    public function getStores(int $page = 1, int $perPage = 100): array
+    {
+        return $this->send('get', '/admin/stores', [
+            'page' => $page,
+            'per_page' => $perPage,
+        ])->throw()->json();
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    public function storeOptions(): array
+    {
+        $payload = $this->getStores(1, 100);
+        $rows = $payload['data'] ?? [];
+
+        return collect($rows)
+            ->mapWithKeys(fn ($row) => [
+                (int) ($row['id'] ?? 0) => (string) ($row['name'] ?? ('Store #'.($row['id'] ?? ''))),
+            ])
+            ->filter(fn ($label, $id) => $id > 0)
+            ->all();
+    }
+
+    public function getStocks(array $filters = [], int $page = 1, int $perPage = 15): array
+    {
+        $query = array_filter([
+            'page' => $page,
+            'per_page' => $perPage,
+            'store_id' => $filters['store_id'] ?? null,
+            'product_id' => $filters['product_id'] ?? null,
+        ], fn ($value) => $value !== null && $value !== '');
+
+        return $this->send('get', '/admin/stocks', $query)->throw()->json();
+    }
+
+    public function createStock(array $data): array
+    {
+        return $this->send('post', '/admin/stocks', $data)->throw()->json();
+    }
+
+    public function updateStock(int $id, array $data): array
+    {
+        return $this->send('patch', "/admin/stocks/{$id}", $data)->throw()->json();
     }
 
     public function uploadProductImage(string $filename, string $contentType, string $contents): string
