@@ -41,10 +41,10 @@ class Login extends BaseLogin
         }
 
         $roleSlug = $profile['role']['slug'] ?? $profile['role_slug'] ?? null;
-        if ($roleSlug !== 'admin') {
+        if (! in_array($roleSlug, ['admin', 'analyst'], true)) {
             $api->logout();
             throw ValidationException::withMessages([
-                'data.email' => ['Only administrators can access this panel.'],
+                'data.email' => ['Only administrators and analysts can access this panel.'],
             ]);
         }
 

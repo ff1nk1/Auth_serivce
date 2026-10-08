@@ -43,4 +43,8 @@ return [
         'url' => env('NOTIFICATION_SERVICE_URL', 'http://notification_service_app:8003'),
     ],
 
+    'order' => [
+        'url' => env('ORDER_SERVICE_URL', 'http://order_service_app:8004'),
+    ],
+
 ];

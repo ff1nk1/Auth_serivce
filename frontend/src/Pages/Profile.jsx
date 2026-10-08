@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { authApi } from '../api/authClient' 
 import '../css/profile.css';
 
@@ -111,6 +112,8 @@ export default function Profile({ user }) {
         <div className="profile-badges">
           <span className="badge">ID: {user.id}</span>
           <span className="badge">Role ID: {user.role_id}</span>
+          <Link to="/orders" className="badge">Мои заказы →</Link>
+          <Link to="/categories" className="badge">Каталог →</Link>
         </div>
 
         {/* Статусное сообщение об успехе или ошибке */}

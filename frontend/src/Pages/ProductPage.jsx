@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { catalogApi } from '../api/catalogClient';
+import { orderApi } from '../api/orderClient';
 import { formatImageUrl, PLACEHOLDER_IMAGE } from '../utils/formatImageUrl';
 import '../css/product_page.css';
+import '../css/orders.css';
 
 export default function ProductPage() {
     const { id } = useParams();
@@ -11,6 +13,10 @@ export default function ProductPage() {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [quantity, setQuantity] = useState(1);
+    const [ordering, setOrdering] = useState(false);
+    const [orderMessage, setOrderMessage] = useState('');
+    const [orderError, setOrderError] = useState('');
 
     useEffect(() => {
         setLoading(true);
@@ -24,6 +30,36 @@ export default function ProductPage() {
             })
             .finally(() => setLoading(false));
     }, [id]);
+
+    const handleOrder = async () => {
+        if (!product || ordering) return;
+        setOrdering(true);
+        setOrderMessage('');
+        setOrderError('');
+        try {
+            const { data } = await orderApi.post(
+                '/orders',
+                {
+                    items: [{ product_id: product.id, quantity: Number(quantity) || 1 }],
+                },
+                {
+                    headers: {
+                        'Idempotency-Key': crypto.randomUUID(),
+                    },
+                }
+            );
+            setOrderMessage('Заказ создан.');
+            navigate(`/orders/${data.id}`);
+        } catch (err) {
+            const msg =
+                err.response?.data?.message ||
+                err.response?.data?.errors?.items?.[0] ||
+                'Не удалось создать заказ. Нужен локальный снапшот товара в order_service.';
+            setOrderError(msg);
+        } finally {
+            setOrdering(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -82,6 +118,29 @@ export default function ProductPage() {
                         )}
                         <span className="badge">Артикул: #{product.id}</span>
                     </div>
+
+                    <div className="order-qty-row">
+                        <label htmlFor="order-qty">Количество</label>
+                        <input
+                            id="order-qty"
+                            type="number"
+                            min={1}
+                            value={quantity}
+                            onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+                        />
+                        <button
+                            className="order-btn order-btn-primary"
+                            onClick={handleOrder}
+                            disabled={ordering}
+                        >
+                            {ordering ? 'Оформление...' : 'Заказать'}
+                        </button>
+                    </div>
+                    {orderMessage && <div className="status-message success">{orderMessage}</div>}
+                    {orderError && <div className="status-message error">{orderError}</div>}
+                    <p>
+                        <Link to="/orders">Мои заказы →</Link>
+                    </p>
                     
                     {/* Блок характеристик (показываем, если есть attributes) */}
                     {product.attributes && product.attributes.length > 0 && (
@@ -90,10 +149,6 @@ export default function ProductPage() {
                             <ul className="attributes-list">
                                 {product.attributes.map(attr => (
                                     <li key={attr.id} className="attribute-item">
-                                        {/* 
-                                          Предполагается, что в ProductAttribute есть поля name и value.
-                                          Если у вас они называются иначе (например, key/value), поменяйте здесь 
-                                        */}
                                         <span className="attr-name">{attr.name}</span>
                                         <span className="attr-dots"></span>
                                         <span className="attr-value">{attr.value}</span>

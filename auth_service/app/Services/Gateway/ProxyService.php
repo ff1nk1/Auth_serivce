@@ -11,8 +11,10 @@ class ProxyService
 {
     /**
      * Forward the incoming request to an internal microservice and return its response.
+     *
+     * @param  int|null  $injectUserId  When set, merges user_id into query and JSON body.
      */
-    public function forward(Request $request, string $baseUrl, string $path): Response
+    public function forward(Request $request, string $baseUrl, string $path, ?int $injectUserId = null): Response
     {
         $url = rtrim($baseUrl, '/').'/'.ltrim($path, '/');
 
@@ -21,17 +23,24 @@ class ProxyService
             ->timeout(30);
 
         $method = strtolower($request->method());
+        $query = $request->query();
+        $body = $request->all();
+
+        if ($injectUserId !== null) {
+            $query['user_id'] = $injectUserId;
+            $body['user_id'] = $injectUserId;
+        }
 
         /** @var HttpResponse $upstream */
         $upstream = match ($method) {
-            'get' => $pending->get($url, $request->query()),
-            'delete' => $pending->delete($url, $request->query()),
-            'post' => $pending->asJson()->post($url, $request->all()),
-            'put' => $pending->asJson()->put($url, $request->all()),
-            'patch' => $pending->asJson()->patch($url, $request->all()),
+            'get' => $pending->get($url, $query),
+            'delete' => $pending->delete($url, $query),
+            'post' => $pending->asJson()->post($url, $body),
+            'put' => $pending->asJson()->put($url, $body),
+            'patch' => $pending->asJson()->patch($url, $body),
             default => $pending->send($method, $url, [
-                'query' => $request->query(),
-                'json' => $request->all(),
+                'query' => $query,
+                'json' => $body,
             ]),
         };
 
@@ -52,6 +61,10 @@ class ProxyService
 
         if ($request->hasHeader('Content-Type')) {
             $headers['Content-Type'] = $request->header('Content-Type');
+        }
+
+        if ($request->hasHeader('Idempotency-Key')) {
+            $headers['Idempotency-Key'] = (string) $request->header('Idempotency-Key');
         }
 
         return array_filter($headers);

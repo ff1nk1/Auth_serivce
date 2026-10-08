@@ -15,9 +15,12 @@ import CategoryProducts from './Pages/CategoryProducts'
 import Stores from './Pages/Stores'
 import StoreProducts from './Pages/StoreProducts'
 import ProductPage from './Pages/ProductPage'
+import Orders from './Pages/Orders'
+import OrderDetail from './Pages/OrderDetail'
 
 import RootErrorBoundary from './RootErrorBoundary'
 import { notificationsLoader, notificationDetailLoader } from './notifications/loaders'
+import { ordersLoader, orderDetailLoader } from './orders/loaders'
 import { requireAuth } from './auth/requireAuth'
 
 const router = createBrowserRouter(
@@ -32,6 +35,9 @@ const router = createBrowserRouter(
       <Route path="/stores" element={<Stores />} loader={requireAuth} />
       <Route path="/stores/:storeId/products" element={<StoreProducts />} loader={requireAuth} />
       <Route path="/products/:id" element={<ProductPage />} loader={requireAuth} />
+
+      <Route path="/orders" element={<Orders />} loader={ordersLoader} />
+      <Route path="/orders/:id" element={<OrderDetail />} loader={orderDetailLoader} />
 
       <Route path="/notifications" element={<Notifications />} loader={notificationsLoader} />
       <Route path="/notifications/:id" element={<NotificationDetail />} loader={notificationDetailLoader} />

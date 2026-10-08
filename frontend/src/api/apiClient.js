@@ -7,6 +7,7 @@ export const api = createClient(import.meta.env.VITE_API_URL || '/api')
 export const authApi = api
 export const catalogApi = api
 export const notificationApi = api
+export const orderApi = api
 
 let isRefreshing = false
 let failedQueue = []

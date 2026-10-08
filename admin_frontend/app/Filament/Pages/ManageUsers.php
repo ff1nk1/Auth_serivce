@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Concerns\BuildsApiTablePaginator;
+use App\Filament\Concerns\RestrictsToAdmin;
 use App\Services\AuthApiClient;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -18,6 +19,7 @@ class ManageUsers extends Page implements HasTable
 {
     use BuildsApiTablePaginator;
     use InteractsWithTable;
+    use RestrictsToAdmin;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
 

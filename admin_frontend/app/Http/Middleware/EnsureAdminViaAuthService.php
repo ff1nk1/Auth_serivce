@@ -12,9 +12,7 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Re-check admin role against auth_service on every panel request.
- * Prevents Filament "remember me" / stale local mirror from keeping a non-admin in the panel
- * when browser JWT cookies belong to another user (e.g. storefront customer on same host).
+ * Re-check admin/analyst role against auth_service on every panel request.
  */
 class EnsureAdminViaAuthService
 {
@@ -43,7 +41,7 @@ class EnsureAdminViaAuthService
         }
 
         $slug = $profile['role']['slug'] ?? $profile['role_slug'] ?? null;
-        if ($slug !== 'admin') {
+        if (! in_array($slug, ['admin', 'analyst'], true)) {
             try {
                 app(AuthApiClient::class)->logout();
             } catch (\Throwable) {
@@ -59,8 +57,8 @@ class EnsureAdminViaAuthService
         }
 
         $user = Auth::guard(Filament::getAuthGuard())->user();
-        if ($user && $user->role_slug !== 'admin') {
-            $user->forceFill(['role_slug' => 'admin'])->save();
+        if ($user && $user->role_slug !== $slug) {
+            $user->forceFill(['role_slug' => $slug])->save();
         }
 
         return $next($request);

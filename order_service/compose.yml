@@ -1,0 +1,69 @@
+services:
+  order_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        "php-project-php-base:8.5": "service:php-base"
+    image: order_service:local
+    pull_policy: never
+    container_name: order_service_app
+    restart: unless-stopped
+    # Internal only — reached via auth_service gateway
+    expose:
+      - "8004"
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      # Unique hostnames on shared php_project_net
+      DB_HOST: order_service_db
+      DB_PORT: 5432
+      REDIS_HOST: order_service_redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:29092
+      APP_URL: http://order_service_app:8004
+    depends_on:
+      order_db:
+        condition: service_started
+      order_redis:
+        condition: service_healthy
+    networks:
+      - php_project_net
+
+  order_db:
+    image: postgres:16-alpine
+    container_name: order_service_db
+    restart: unless-stopped
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: laravel
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - order_pgdata:/var/lib/postgresql/data
+    networks:
+      - php_project_net
+
+  order_redis:
+    image: redis:7-alpine
+    container_name: order_service_redis
+    restart: unless-stopped
+    ports:
+      - "6382:6379"
+    volumes:
+      - order_redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - php_project_net
+
+volumes:
+  order_pgdata:
+  order_redisdata:

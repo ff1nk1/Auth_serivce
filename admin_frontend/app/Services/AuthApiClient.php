@@ -206,6 +206,38 @@ class AuthApiClient
         return $publicUrl;
     }
 
+    public function getOrders(int $page = 1, int $perPage = 15): array
+    {
+        return $this->send('get', '/admin/orders', [
+            'page' => $page,
+            'per_page' => $perPage,
+        ])->throw()->json();
+    }
+
+    public function getOrder(int $id): array
+    {
+        return $this->send('get', "/admin/orders/{$id}")->throw()->json();
+    }
+
+    public function getNotifications(array $filters = [], int $page = 1, int $perPage = 15): array
+    {
+        $query = array_filter([
+            'page' => $page,
+            'per_page' => $perPage,
+            'status' => $filters['status'] ?? null,
+            'email' => $filters['email'] ?? null,
+            'date_from' => $filters['date_from'] ?? null,
+            'date_to' => $filters['date_to'] ?? null,
+        ], fn ($value) => $value !== null && $value !== '');
+
+        return $this->send('get', '/notifications', $query)->throw()->json();
+    }
+
+    public function getNotification(string $id): array
+    {
+        return $this->send('get', "/notifications/{$id}")->throw()->json();
+    }
+
     public function logout(): void
     {
         try {

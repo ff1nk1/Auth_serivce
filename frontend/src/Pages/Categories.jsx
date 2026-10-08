@@ -25,6 +25,10 @@ export default function Categories() {
                     <p>Выберите интересующий вас раздел</p>
                     <p>
                         <Link to="/stores" className="category-link">Смотреть магазины →</Link>
+                        {' · '}
+                        <Link to="/orders" className="category-link">Мои заказы →</Link>
+                        {' · '}
+                        <Link to="/profile" className="category-link">Профиль →</Link>
                     </p>
                 </div>
 

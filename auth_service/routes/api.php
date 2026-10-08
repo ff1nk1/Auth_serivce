@@ -12,6 +12,9 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/refresh', [AuthController::class, 'refresh']);
 
+// Stripe webhook — no JWT (external callback)
+Route::post('/webhooks/stripe', [GatewayController::class, 'stripeWebhook']);
+
 Route::middleware(['ensure.token', 'cookie.token', 'auth:api'])->group(function () {
     Route::get('/user', [AuthController::class, 'get_user']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -22,13 +25,21 @@ Route::middleware(['ensure.token', 'cookie.token', 'auth:api'])->group(function 
     Route::any('/catalog/{path?}', [GatewayController::class, 'catalog'])
         ->where('path', '.*');
 
-    // Notifications — admin + analyst
+    // Customer orders — auth injects user_id when proxying
+    Route::any('/orders/{path?}', [GatewayController::class, 'orders'])
+        ->where('path', '.*');
+
+    // Notifications + admin orders — admin + analyst
     Route::middleware('role:admin,analyst')->group(function () {
         Route::any('/notifications/{path?}', [GatewayController::class, 'notifications'])
             ->where('path', '.*');
+
+        // Must be registered before admin catalog catch-all
+        Route::any('/admin/orders/{path?}', [GatewayController::class, 'ordersAdmin'])
+            ->where('path', '.*');
     });
 
-    // Admin zone
+    // Admin zone (catalog CRUD + users)
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('/users', [AdminController::class, 'index']);
         Route::get('/roles', [AdminController::class, 'getRoles']);

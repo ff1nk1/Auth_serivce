@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Concerns\BuildsApiTablePaginator;
+use App\Filament\Concerns\RestrictsToAdmin;
 use App\Services\AuthApiClient;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
@@ -25,6 +26,7 @@ class ManageProducts extends Page implements HasTable
 {
     use BuildsApiTablePaginator;
     use InteractsWithTable;
+    use RestrictsToAdmin;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cube';
 

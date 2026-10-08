@@ -49,4 +49,37 @@ class GatewayController extends Controller
             '/api/notifications'.$suffix
         );
     }
+
+    public function orders(Request $request, string $path = ''): Response
+    {
+        $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
+        $userId = (int) $request->user()->id;
+
+        return $this->proxy->forward(
+            $request,
+            (string) config('services.order.url'),
+            '/api/orders'.$suffix,
+            $userId
+        );
+    }
+
+    public function ordersAdmin(Request $request, string $path = ''): Response
+    {
+        $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
+
+        return $this->proxy->forward(
+            $request,
+            (string) config('services.order.url'),
+            '/api/admin/orders'.$suffix
+        );
+    }
+
+    public function stripeWebhook(Request $request): Response
+    {
+        return $this->proxy->forward(
+            $request,
+            (string) config('services.order.url'),
+            '/api/webhooks/stripe'
+        );
+    }
 }

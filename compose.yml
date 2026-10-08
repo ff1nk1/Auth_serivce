@@ -10,11 +10,13 @@
 #   docker compose exec auth_app php artisan migrate --seed
 #   docker compose exec catalog_app php artisan migrate --seed
 #   docker compose exec notification_app php artisan migrate --seed
+#   docker compose exec order_app php artisan migrate
 
 include:
   - path: infra/compose.yml
   - path: auth_service/compose.yml
   - path: catalog_service/compose.yml
   - path: notification_service/compose.yml
+  - path: order_service/compose.yml
   - path: frontend/compose.yml
   - path: admin_frontend/compose.yml
