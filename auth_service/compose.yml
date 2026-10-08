@@ -1,16 +1,5 @@
 services:
-  # Built automatically when building app (additional_contexts service:).
-  # Exits immediately on `compose up` — image-only helper.
-  php-base:
-    build:
-      context: ../infra/php-base
-      dockerfile: Dockerfile
-    image: php-project-php-base:8.5
-    entrypoint: ["true"]
-    restart: "no"
-    network_mode: none
-
-  app:
+  auth_app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -28,7 +17,7 @@ services:
     env_file:
       - .env
     environment:
-      # Unique hostnames on shared php_project_net (service name "db" clashes across stacks)
+      # Unique hostnames on shared php_project_net
       DB_HOST: auth_service_db
       DB_PORT: 5432
       REDIS_HOST: auth_service_redis
@@ -40,14 +29,14 @@ services:
       JWT_COOKIE_DOMAIN: ""
       APP_URL: http://auth_service_app:8001
     depends_on:
-      db:
+      auth_db:
         condition: service_started
-      redis:
+      auth_redis:
         condition: service_healthy
     networks:
       - php_project_net
 
-  db:
+  auth_db:
     image: postgres:16-alpine
     container_name: auth_service_db
     restart: unless-stopped
@@ -62,7 +51,7 @@ services:
     networks:
       - php_project_net
 
-  redis:
+  auth_redis:
     image: redis:7-alpine
     container_name: auth_service_redis
     restart: unless-stopped
@@ -82,8 +71,3 @@ services:
 volumes:
   auth_pgdata:
   auth_redisdata:
-
-networks:
-  php_project_net:
-    external: true
-    name: php_project_net

@@ -143,7 +143,8 @@ return [
     |
     */
 
-    'path' => env('SESSION_PATH', '/'),
+    // Scoped to /admin so storefront on same host does not share this session/remember cookie.
+    'path' => env('SESSION_PATH', '/admin'),
 
     /*
     |--------------------------------------------------------------------------

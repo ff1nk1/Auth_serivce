@@ -1,19 +1,22 @@
 # PHP base image (build once, used by all microservices):
 #   ./infra/build-base.sh
-# or:
-#   docker compose -f infra/compose.yml build php-base
+# or from repo root:
+#   docker compose build php-base
 #
 # Edge (Traefik): only frontend + admin_frontend are routed.
 # auth_service is NOT exposed via Traefik — only via frontend nginx /api proxy.
 
 services:
+  # Shared base image for Laravel services (additional_contexts service:php-base).
+  # Exits immediately on `compose up` — image-only helper.
   php-base:
     build:
       context: ./php-base
       dockerfile: Dockerfile
     image: php-project-php-base:8.5
-    profiles:
-      - build
+    entrypoint: ["true"]
+    restart: "no"
+    network_mode: none
 
   traefik:
     image: traefik:v3.3

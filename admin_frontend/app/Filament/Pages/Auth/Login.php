@@ -8,6 +8,8 @@ use DanHarrin\LivewireRateLimiting\Exceptions\TooManyRequestsException;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Facades\Filament;
+use Filament\Forms\Components\Hidden;
+use Filament\Schemas\Components\Component;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -60,7 +62,9 @@ class Login extends BaseLogin
         $accessToken = session('auth_access_token');
         $refreshToken = session('auth_refresh_token');
 
-        Auth::guard(Filament::getAuthGuard())->login($user, (bool) ($data['remember'] ?? false));
+        // Never use Filament "remember me": storefront shares app.localhost and a
+        // long-lived remember cookie would reopen the panel after a customer login.
+        Auth::guard(Filament::getAuthGuard())->login($user, false);
         session()->regenerate();
 
         session([
@@ -69,5 +73,10 @@ class Login extends BaseLogin
         ]);
 
         return app(LoginResponse::class);
+    }
+
+    protected function getRememberFormComponent(): Component
+    {
+        return Hidden::make('remember')->default(false);
     }
 }

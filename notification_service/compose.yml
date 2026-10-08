@@ -1,14 +1,5 @@
 services:
-  php-base:
-    build:
-      context: ../infra/php-base
-      dockerfile: Dockerfile
-    image: php-project-php-base:8.5
-    entrypoint: ["true"]
-    restart: "no"
-    network_mode: none
-
-  app:
+  notification_app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -26,7 +17,7 @@ services:
     env_file:
       - .env
     environment:
-      # Unique hostnames on shared php_project_net (service name "db"/"mongodb" clash across stacks)
+      # Unique hostnames on shared php_project_net
       DB_HOST: notification_service_db
       DB_PORT: 5432
       MONGODB_HOST: notification_service_mongodb
@@ -35,16 +26,16 @@ services:
       MAIL_HOST: notification_service_mailhog
       MAIL_PORT: 1025
     depends_on:
-      db:
+      notification_db:
         condition: service_started
-      mongodb:
+      notification_mongodb:
         condition: service_started
-      mailhog:
+      notification_mailhog:
         condition: service_healthy
     networks:
       - php_project_net
 
-  db:
+  notification_db:
     image: postgres:16-alpine
     container_name: notification_service_db
     restart: unless-stopped
@@ -59,7 +50,7 @@ services:
     networks:
       - php_project_net
 
-  mongodb:
+  notification_mongodb:
     image: mongo:7.0
     container_name: notification_service_mongodb
     restart: unless-stopped
@@ -74,7 +65,7 @@ services:
     networks:
       - php_project_net
 
-  mailhog:
+  notification_mailhog:
     image: mailhog/mailhog
     container_name: notification_service_mailhog
     ports:
@@ -88,7 +79,7 @@ services:
       timeout: 3s
       retries: 2
 
-  kafka-consumer:
+  notification_kafka_consumer:
     image: notification_service:local
     pull_policy: never
     container_name: notification_kafka_consumer
@@ -107,18 +98,13 @@ services:
       MAIL_HOST: notification_service_mailhog
       MAIL_PORT: 1025
     depends_on:
-      - app
-      - mongodb
-      - mailhog
-      - db
+      - notification_app
+      - notification_mongodb
+      - notification_mailhog
+      - notification_db
     networks:
       - php_project_net
 
 volumes:
   notification_pgdata:
   notification_mongodata:
-
-networks:
-  php_project_net:
-    external: true
-    name: php_project_net

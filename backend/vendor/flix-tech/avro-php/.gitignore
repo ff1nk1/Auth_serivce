@@ -1,7 +1,0 @@
-.idea/
-vendor/
-composer.lock
-bin/composer.phar
-!bin/php
-!build/.gitkeep
-.phpunit.result.cache

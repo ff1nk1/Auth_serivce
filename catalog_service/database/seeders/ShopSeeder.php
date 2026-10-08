@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductAttribute;
 use App\Models\Store;
 use Illuminate\Support\Facades\Schema;
 
@@ -19,6 +20,7 @@ class ShopSeeder extends Seeder
         // 1. Очищаем таблицы перед сидированием, чтобы избежать дублей
         // Отключаем проверку внешних ключей на время очистки
         Schema::disableForeignKeyConstraints();
+        ProductAttribute::truncate();
         Product::truncate();
         Category::truncate();
         Store::truncate();

@@ -1,14 +1,5 @@
 services:
-  php-base:
-    build:
-      context: ../infra/php-base
-      dockerfile: Dockerfile
-    image: php-project-php-base:8.5
-    entrypoint: ["true"]
-    restart: "no"
-    network_mode: none
-
-  app:
+  admin_app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -28,6 +19,7 @@ services:
       APP_URL: https://app.localhost
       AUTH_API_URL: http://auth_service_app:8001/api
       SESSION_DOMAIN: null
+      SESSION_PATH: /admin
       DB_CONNECTION: sqlite
       DB_DATABASE: /var/www/database/database.sqlite
     networks:
@@ -40,8 +32,3 @@ services:
       - traefik.http.routers.admin.entrypoints=web
       - traefik.http.routers.admin.priority=100
       - traefik.http.services.admin.loadbalancer.server.port=8000
-
-networks:
-  php_project_net:
-    external: true
-    name: php_project_net
