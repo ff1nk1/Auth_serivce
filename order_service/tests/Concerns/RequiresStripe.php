@@ -1,0 +1,42 @@
+<?php
+
+namespace Tests\Concerns;
+
+trait RequiresStripe
+{
+    protected function requireStripeSecret(): string
+    {
+        $secret = (string) config('services.stripe.secret', env('STRIPE_SECRET', ''));
+        if ($secret === '' || str_contains($secret, 'dummy')) {
+            $this->fail('STRIPE_SECRET is not configured for integration tests.');
+        }
+
+        return $secret;
+    }
+
+    protected function requireStripeWebhookSecret(): string
+    {
+        $secret = (string) config('services.stripe.webhook_secret', env('STRIPE_WEBHOOK_SECRET', ''));
+        if ($secret === '') {
+            $this->fail('STRIPE_WEBHOOK_SECRET is not configured for integration tests.');
+        }
+
+        return $secret;
+    }
+
+    /**
+     * @param  array<string, mixed>  $event
+     */
+    protected function signStripeWebhookPayload(array $event): array
+    {
+        $payload = json_encode($event, JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $secret = $this->requireStripeWebhookSecret();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, $secret);
+
+        return [
+            'payload' => $payload,
+            'header' => 't='.$timestamp.',v1='.$signature,
+        ];
+    }
+}
