@@ -2,35 +2,61 @@
 
 namespace App\Kafka\Handlers;
 
-use App\Models\Stock; 
 use App\Models\OutboxEvent;
+use App\Models\Stock;
+use App\Services\SagaStepGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Contracts\ConsumerMessage;
 
 class OrderCreatedHandler
 {
+    public function __construct(
+        private SagaStepGuard $saga,
+    ) {}
+
     public function __invoke(ConsumerMessage $message): void
     {
-        // 1. Извлекаем заголовки и проверяем тип события
         $headers = $message->getHeaders();
         $eventType = $headers['event-type'] ?? null;
 
-        // 2. Если сообщение предназначено не для обработки создания заказа — игнорируем его
         if ($eventType !== 'order.created') {
             return;
         }
 
-        Log::info("🚨 КОНСЬЮМЕР СРАБОТАЛ! Получено сообщение order.created:", ['body' => $message->getBody()]);
+        Log::info('Получено сообщение order.created:', ['body' => $message->getBody()]);
         $payload = $message->getBody();
+
+        if (! is_array($payload)) {
+            Log::warning('Получено невалидное событие order.created', ['payload' => $payload]);
+
+            return;
+        }
 
         $orderId = $payload['order_id'] ?? null;
         $items = $payload['items'] ?? [];
+        $sagaId = $this->sagaIdFrom($payload);
 
-        if (!$orderId || empty($items)) {
-            Log::warning("Получено пустое или невалидное событие order.created", ['payload' => $payload]);
+        if (! $orderId || empty($items)) {
+            Log::warning('Получено пустое или невалидное событие order.created', ['payload' => $payload]);
+
             return;
         }
+
+        if ($sagaId !== null) {
+            $decision = $this->saga->tryBegin($sagaId, 'stock.reserve');
+            if ($decision !== 'run') {
+                Log::info('Saga step stock.reserve skipped', [
+                    'saga_id' => $sagaId,
+                    'decision' => $decision,
+                ]);
+
+                return;
+            }
+        }
+
+        $stepStatus = SagaStepGuard::STATUS_DONE;
+        $stepResult = ['order_id' => $orderId, 'outcome' => 'reserved'];
 
         try {
             DB::beginTransaction();
@@ -39,76 +65,100 @@ class OrderCreatedHandler
             $stockChangedEvents = [];
 
             foreach ($items as $item) {
-                // Пессимистичная блокировка
                 $stock = Stock::where('product_id', $item['product_id'])
-                              ->where('store_id', $item['store_id'])
-                              ->lockForUpdate() 
-                              ->first();
+                    ->where('store_id', $item['store_id'])
+                    ->lockForUpdate()
+                    ->first();
 
-                // Проверяем наличие нужного количества
-                if (!$stock || $stock->quantity < $item['quantity']) {
+                if (! $stock || $stock->quantity < $item['quantity']) {
                     $allAvailable = false;
                     break;
                 }
 
-                // Уменьшение остатка
                 $stock->quantity -= $item['quantity'];
                 $stock->save();
 
-                // Собираем данные об изменении остатка
                 $stockChangedEvents[] = [
                     'product_id' => $stock->product_id,
-                    'store_id'   => $stock->store_id,
-                    'quantity'   => $stock->quantity,
+                    'store_id' => $stock->store_id,
+                    'quantity' => $stock->quantity,
                 ];
             }
 
             if ($allAvailable) {
+                $reservedPayload = [
+                    'order_id' => $orderId,
+                    'status' => 'success',
+                ];
+                if ($sagaId !== null) {
+                    $reservedPayload['saga_id'] = $sagaId;
+                }
+
                 OutboxEvent::create([
-                    'topic'      => 'stock.events', 
+                    'topic' => 'stock.events',
                     'event_type' => 'stock.reserved',
-                    'payload'    => [
-                        'order_id' => $orderId,
-                        'status'   => 'success'
-                    ]
+                    'payload' => $reservedPayload,
                 ]);
 
-                Log::info("✅ УСПЕХ: Товар для заказа #{$orderId} зарезервирован. Событие отправлено в Outbox.");
+                Log::info("Товар для заказа #{$orderId} зарезервирован. Событие отправлено в Outbox.");
 
-                // События изменений остатков для аналитики и поиска
                 foreach ($stockChangedEvents as $changedEvent) {
                     OutboxEvent::create([
-                        'topic'      => 'catalog.events', //Этот топик для recomendation service
+                        'topic' => 'catalog.events',
                         'event_type' => 'stock.changed',
-                        'payload'    => $changedEvent
+                        'payload' => $changedEvent,
                     ]);
                 }
             } else {
-                DB::rollBack(); 
-                
-                // ОТКАЗ: Отправляем ответ в топик stock.events
+                DB::rollBack();
+
                 DB::beginTransaction();
+                $failedPayload = [
+                    'order_id' => $orderId,
+                    'reason' => 'Not enough stock',
+                ];
+                if ($sagaId !== null) {
+                    $failedPayload['saga_id'] = $sagaId;
+                }
+
                 OutboxEvent::create([
-                    'topic'      => 'stock.events',
+                    'topic' => 'stock.events',
                     'event_type' => 'stock.reservation_failed',
-                    'payload'    => [
-                        'order_id' => $orderId,
-                        'reason'   => 'Not enough stock'
-                    ]
+                    'payload' => $failedPayload,
                 ]);
-                Log::warning("⚠️ ОТКАЗ: Недостаточно товара на складе для заказа #{$orderId}. Событие reservation_failed отправлено в Outbox.");
+                Log::warning("Недостаточно товара на складе для заказа #{$orderId}. Событие reservation_failed отправлено в Outbox.");
+
+                $stepStatus = SagaStepGuard::STATUS_FAILED;
+                $stepResult = ['order_id' => $orderId, 'outcome' => 'reservation_failed'];
             }
 
             DB::commit();
 
+            if ($sagaId !== null) {
+                $this->saga->put($sagaId, 'stock.reserve', $stepStatus, $stepResult);
+            }
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error("🔥 ФАТАЛЬНАЯ ОШИБКА внутри консьюмера:", [
+            Log::error('Фатальная ошибка внутри консьюмера order.created:', [
                 'order_id' => $orderId,
-                'message'  => $e->getMessage(),
-                'line'     => $e->getLine(),
-                'file'     => $e->getFile()
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
             ]);
+        } finally {
+            if ($sagaId !== null) {
+                $this->saga->release($sagaId, 'stock.reserve');
+            }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function sagaIdFrom(array $payload): ?string
+    {
+        $sagaId = $payload['saga_id'] ?? null;
+
+        return is_string($sagaId) && $sagaId !== '' ? $sagaId : null;
     }
 }

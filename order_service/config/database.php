@@ -99,6 +99,21 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
+        // Read-only sync of catalog products → product_snapshots (local seeding).
+        'catalog' => [
+            'driver' => 'pgsql',
+            'host' => env('CATALOG_DB_HOST', 'catalog_service_db'),
+            'port' => env('CATALOG_DB_PORT', '5432'),
+            'database' => env('CATALOG_DB_DATABASE', 'catalog_db'),
+            'username' => env('CATALOG_DB_USERNAME', 'laravel'),
+            'password' => env('CATALOG_DB_PASSWORD', 'secret'),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),

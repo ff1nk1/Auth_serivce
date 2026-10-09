@@ -105,6 +105,32 @@ services:
     networks:
       - php_project_net
 
+  notification_kafka_order_consumer:
+    image: notification_service:local
+    pull_policy: never
+    container_name: notification_kafka_order_consumer
+    restart: unless-stopped
+    command: php artisan kafka:consume:order-events
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      DB_HOST: notification_service_db
+      DB_PORT: 5432
+      MONGODB_HOST: notification_service_mongodb
+      MONGODB_PORT: 27017
+      KAFKA_BROKERS: kafka:29092
+      MAIL_HOST: notification_service_mailhog
+      MAIL_PORT: 1025
+    depends_on:
+      - notification_app
+      - notification_mongodb
+      - notification_mailhog
+      - notification_db
+    networks:
+      - php_project_net
+
 volumes:
   notification_pgdata:
   notification_mongodata:

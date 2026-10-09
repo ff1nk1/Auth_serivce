@@ -79,3 +79,6 @@ networks:
   php_project_net:
     name: php_project_net
     driver: bridge
+    driver_opts:
+      # Below VPN (wginno) MTU 1420 — avoids TLS hang to external APIs like Stripe
+      com.docker.network.driver.mtu: "1400"

@@ -9,11 +9,19 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Junges\Kafka\Contracts\ConsumerMessage;
 use Mockery;
+use Tests\Concerns\BindsInMemorySagaStepGuard;
 use Tests\TestCase;
 
 class ProductSnapshotOrderFlowTest extends TestCase
 {
+    use BindsInMemorySagaStepGuard;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->bindInMemorySagaStepGuard();
+    }
 
     protected function tearDown(): void
     {
@@ -33,7 +41,7 @@ class ProductSnapshotOrderFlowTest extends TestCase
 
         $this->expectException(ValidationException::class);
 
-        app(OrderService::class)->create(1, [
+        app(OrderService::class)->create(1, 'a@example.com', 'A', [
             ['product_id' => 136, 'quantity' => 1],
         ], 'idem-missing-snapshot');
     }
@@ -63,7 +71,7 @@ class ProductSnapshotOrderFlowTest extends TestCase
 
         $this->app->instance(IdempotencyService::class, $idempotency);
 
-        $result = app(OrderService::class)->create(7, [
+        $result = app(OrderService::class)->create(7, 'user7@example.com', 'User Seven', [
             ['product_id' => 136, 'quantity' => 2],
         ], 'idem-after-snapshot');
 
@@ -72,6 +80,8 @@ class ProductSnapshotOrderFlowTest extends TestCase
         $this->assertSame('13534.00', $result['body']['total_amount'] ?? null);
         $this->assertDatabaseHas('orders', [
             'user_id' => 7,
+            'customer_email' => 'user7@example.com',
+            'customer_name' => 'User Seven',
             'status' => 'pending',
             'total_amount' => '13534.00',
         ]);
@@ -107,6 +117,8 @@ class ProductSnapshotOrderFlowTest extends TestCase
 
         $response = $this->postJson('/api/orders', [
             'user_id' => 3,
+            'email' => 'user3@example.com',
+            'name' => 'User Three',
             'items' => [
                 ['product_id' => 137, 'quantity' => 1],
             ],

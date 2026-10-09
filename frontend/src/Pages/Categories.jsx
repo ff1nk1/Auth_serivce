@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { catalogApi } from '../api/catalogClient'; 
+import { catalogApi } from '../api/catalogClient';
+import CartNavLink from '../cart/CartNavLink';
 import '../css/catalog.css'; 
 
 
@@ -25,6 +26,8 @@ export default function Categories() {
                     <p>Выберите интересующий вас раздел</p>
                     <p>
                         <Link to="/stores" className="category-link">Смотреть магазины →</Link>
+                        {' · '}
+                        <CartNavLink className="category-link" />
                         {' · '}
                         <Link to="/orders" className="category-link">Мои заказы →</Link>
                         {' · '}

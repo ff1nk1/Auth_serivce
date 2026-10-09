@@ -2,17 +2,47 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\PaymentService;
+use App\Services\Stripe\StripeClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use UnexpectedValueException;
 
 class StripeWebhookController extends Controller
 {
+    public function __construct(
+        private StripeClient $stripe,
+        private PaymentService $payments,
+    ) {}
+
     public function __invoke(Request $request): JsonResponse
     {
-        Log::info('Stripe webhook stub received', [
-            'payload' => $request->all(),
-        ]);
+        $payload = $request->getContent();
+        $signature = (string) $request->header('Stripe-Signature', '');
+
+        try {
+            $event = $this->stripe->constructWebhookEvent($payload, $signature);
+        } catch (UnexpectedValueException $e) {
+            Log::warning('Stripe webhook signature verification failed', [
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json(['message' => 'Invalid signature'], 400);
+        } catch (\Throwable $e) {
+            if (class_exists(\Stripe\Exception\SignatureVerificationException::class)
+                && $e instanceof \Stripe\Exception\SignatureVerificationException) {
+                Log::warning('Stripe webhook signature verification failed', [
+                    'message' => $e->getMessage(),
+                ]);
+
+                return response()->json(['message' => 'Invalid signature'], 400);
+            }
+
+            throw $e;
+        }
+
+        $this->payments->handleWebhookEvent($event);
 
         return response()->json(['received' => true]);
     }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { orderApi } from '../api/orderClient'
+import CartNavLink from '../cart/CartNavLink'
 import '../css/orders.css'
 
 export default function Orders() {
@@ -35,6 +36,7 @@ export default function Orders() {
       <div className="orders-container">
         <div className="orders-nav">
           <Link to="/categories">← Каталог</Link>
+          <CartNavLink />
           <Link to="/profile">Профиль</Link>
         </div>
         <div className="orders-card">
@@ -48,7 +50,9 @@ export default function Orders() {
           {loading ? (
             <div className="status-message">Загрузка...</div>
           ) : orders.length === 0 ? (
-            <div className="orders-empty">Заказов пока нет. Оформите заказ со страницы товара.</div>
+            <div className="orders-empty">
+              Заказов пока нет. Добавьте товары в <Link to="/cart">корзину</Link> или оформите заказ со страницы товара.
+            </div>
           ) : (
             <ul className="orders-list">
               {orders.map((order) => (

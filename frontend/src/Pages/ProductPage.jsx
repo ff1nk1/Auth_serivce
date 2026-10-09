@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { catalogApi } from '../api/catalogClient';
 import { orderApi } from '../api/orderClient';
+import { useCart } from '../cart/CartContext';
+import CartNavLink from '../cart/CartNavLink';
 import { formatImageUrl, PLACEHOLDER_IMAGE } from '../utils/formatImageUrl';
 import '../css/product_page.css';
 import '../css/orders.css';
@@ -9,6 +11,7 @@ import '../css/orders.css';
 export default function ProductPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { addItem } = useCart();
     
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -17,6 +20,7 @@ export default function ProductPage() {
     const [ordering, setOrdering] = useState(false);
     const [orderMessage, setOrderMessage] = useState('');
     const [orderError, setOrderError] = useState('');
+    const [cartMessage, setCartMessage] = useState('');
 
     useEffect(() => {
         setLoading(true);
@@ -31,11 +35,20 @@ export default function ProductPage() {
             .finally(() => setLoading(false));
     }, [id]);
 
+    const handleAddToCart = () => {
+        if (!product) return;
+        addItem(product, Number(quantity) || 1);
+        setCartMessage('Товар добавлен в корзину.');
+        setOrderMessage('');
+        setOrderError('');
+    };
+
     const handleOrder = async () => {
         if (!product || ordering) return;
         setOrdering(true);
         setOrderMessage('');
         setOrderError('');
+        setCartMessage('');
         try {
             const { data } = await orderApi.post(
                 '/orders',
@@ -129,16 +142,27 @@ export default function ProductPage() {
                             onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
                         />
                         <button
+                            className="order-btn"
+                            onClick={handleAddToCart}
+                            type="button"
+                        >
+                            В корзину
+                        </button>
+                        <button
                             className="order-btn order-btn-primary"
                             onClick={handleOrder}
                             disabled={ordering}
+                            type="button"
                         >
                             {ordering ? 'Оформление...' : 'Заказать'}
                         </button>
                     </div>
+                    {cartMessage && <div className="status-message success">{cartMessage}</div>}
                     {orderMessage && <div className="status-message success">{orderMessage}</div>}
                     {orderError && <div className="status-message error">{orderError}</div>}
                     <p>
+                        <CartNavLink />
+                        {' · '}
                         <Link to="/orders">Мои заказы →</Link>
                     </p>
                     

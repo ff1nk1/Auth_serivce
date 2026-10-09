@@ -33,5 +33,9 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="STRIPE_SECRET" value="sk_test_dummy"/>
+        <env name="STRIPE_WEBHOOK_SECRET" value="whsec_test_secret" force="true"/>
+        <env name="STRIPE_SUCCESS_URL" value="https://app.localhost/orders/{ORDER_ID}?paid=1"/>
+        <env name="STRIPE_CANCEL_URL" value="https://app.localhost/orders/{ORDER_ID}?canceled=1"/>
     </php>
 </phpunit>

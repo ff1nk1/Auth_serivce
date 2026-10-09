@@ -12,9 +12,10 @@ class ProxyService
     /**
      * Forward the incoming request to an internal microservice and return its response.
      *
-     * @param  int|null  $injectUserId  When set, merges user_id into query and JSON body.
+     * @param  array{id: int, email?: string|null, name?: string|null}|null  $injectUser
+     *         When set, merges user_id (and email/name when present) into query and JSON body.
      */
-    public function forward(Request $request, string $baseUrl, string $path, ?int $injectUserId = null): Response
+    public function forward(Request $request, string $baseUrl, string $path, ?array $injectUser = null): Response
     {
         $url = rtrim($baseUrl, '/').'/'.ltrim($path, '/');
 
@@ -26,9 +27,19 @@ class ProxyService
         $query = $request->query();
         $body = $request->all();
 
-        if ($injectUserId !== null) {
-            $query['user_id'] = $injectUserId;
-            $body['user_id'] = $injectUserId;
+        if ($injectUser !== null) {
+            $query['user_id'] = $injectUser['id'];
+            $body['user_id'] = $injectUser['id'];
+
+            if (isset($injectUser['email']) && is_string($injectUser['email']) && $injectUser['email'] !== '') {
+                $query['email'] = $injectUser['email'];
+                $body['email'] = $injectUser['email'];
+            }
+
+            if (isset($injectUser['name']) && is_string($injectUser['name']) && $injectUser['name'] !== '') {
+                $query['name'] = $injectUser['name'];
+                $body['name'] = $injectUser['name'];
+            }
         }
 
         /** @var HttpResponse $upstream */
@@ -43,6 +54,37 @@ class ProxyService
                 'json' => $body,
             ]),
         };
+
+        return response($upstream->body(), $upstream->status())
+            ->withHeaders($this->responseHeaders($upstream));
+    }
+
+    /**
+     * Forward raw request body (e.g. Stripe webhooks) without re-encoding JSON.
+     */
+    public function forwardRaw(Request $request, string $baseUrl, string $path): Response
+    {
+        $url = rtrim($baseUrl, '/').'/'.ltrim($path, '/');
+
+        $headers = [
+            'Accept' => 'application/json',
+            'X-Forwarded-For' => $request->ip() ?? '',
+            'X-Forwarded-Proto' => $request->getScheme(),
+        ];
+
+        if ($request->hasHeader('Content-Type')) {
+            $headers['Content-Type'] = (string) $request->header('Content-Type');
+        }
+
+        if ($request->hasHeader('Stripe-Signature')) {
+            $headers['Stripe-Signature'] = (string) $request->header('Stripe-Signature');
+        }
+
+        /** @var HttpResponse $upstream */
+        $upstream = Http::withHeaders(array_filter($headers))
+            ->withBody($request->getContent(), (string) ($request->header('Content-Type') ?: 'application/json'))
+            ->timeout(30)
+            ->send($request->method(), $url);
 
         return response($upstream->body(), $upstream->status())
             ->withHeaders($this->responseHeaders($upstream));

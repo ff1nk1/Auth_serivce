@@ -2,54 +2,49 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
+use App\Models\Product;
 use App\Models\Stock;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 class StockSeeder extends Seeder
 {
     /**
-     * Запуск сидера для заполнения остатков товаров на складах.
+     * Создаёт остатки для всех товаров на их store_id (как ждёт order.created / резерв).
      */
     public function run(): void
     {
-        $stocks = [
-            [
-                'product_id' => 1,
-                'store_id'   => 1,
-                'quantity'   => 100,
-                'reserved'   => 0,
-            ],
-            [
-                'product_id' => 1,
-                'store_id'   => 2,
-                'quantity'   => 50,
-                'reserved'   => 5,
-            ],
-            [
-                'product_id' => 2,
-                'store_id'   => 1,
-                'quantity'   => 200,
-                'reserved'   => 10,
-            ],
-            [
-                'product_id' => 3,
-                'store_id'   => 1,
-                'quantity'   => 0, // Нарочно 0 для тестирования кейсов с нехваткой товара
-                'reserved'   => 0,
-            ],
-        ];
+        Schema::disableForeignKeyConstraints();
+        Stock::query()->truncate();
+        Schema::enableForeignKeyConstraints();
 
-        foreach ($stocks as $stock) {
-            Stock::updateOrCreate(
+        $products = Product::query()->orderBy('id')->get();
+
+        if ($products->isEmpty()) {
+            $this->command?->warn('Нет товаров — сначала запустите ShopSeeder.');
+
+            return;
+        }
+
+        foreach ($products as $index => $product) {
+            // Первый товар оставляем с 0 — удобно проверить stock.reservation_failed.
+            $quantity = $index === 0 ? 0 : 100;
+
+            Stock::query()->updateOrCreate(
                 [
-                    'product_id' => $stock['product_id'],
-                    'store_id'   => $stock['store_id'],
+                    'product_id' => $product->id,
+                    'store_id' => $product->store_id,
                 ],
                 [
-                    'quantity' => $stock['quantity'],
-                    'reserved' => $stock['reserved'],
+                    'quantity' => $quantity,
+                    'reserved' => 0,
                 ]
             );
         }
+
+        $this->command?->info(sprintf(
+            'Stock seeded for %d products (first product quantity=0 for shortage tests).',
+            $products->count()
+        ));
     }
 }

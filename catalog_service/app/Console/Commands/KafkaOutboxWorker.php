@@ -43,6 +43,15 @@ class KafkaOutboxWorker extends Command
 
         foreach ($events as $event) {
             try {
+                $headers = [
+                    'event-type' => $event->event_type,
+                    'source' => 'catalog-service',
+                ];
+                $payload = is_array($event->payload) ? $event->payload : [];
+                if (is_string($payload['saga_id'] ?? null) && $payload['saga_id'] !== '') {
+                    $headers['saga-id'] = $payload['saga_id'];
+                }
+
                 Kafka::publish(config('kafka.brokers', 'kafka:29092'))
                     ->onTopic($event->topic)
                     ->withConfigOptions([
@@ -53,10 +62,7 @@ class KafkaOutboxWorker extends Command
                         'retry.backoff.ms' => 1000,
                     ])
                     ->withKafkaKey((string) $event->id)
-                    ->withHeaders([
-                        'event-type' => $event->event_type,
-                        'source' => 'catalog-service',
-                    ])
+                    ->withHeaders($headers)
                     ->withBody($event->payload)
                     ->send();
 

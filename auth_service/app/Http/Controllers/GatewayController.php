@@ -53,13 +53,17 @@ class GatewayController extends Controller
     public function orders(Request $request, string $path = ''): Response
     {
         $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
-        $userId = (int) $request->user()->id;
+        $user = $request->user();
 
         return $this->proxy->forward(
             $request,
             (string) config('services.order.url'),
             '/api/orders'.$suffix,
-            $userId
+            [
+                'id' => (int) $user->id,
+                'email' => $user->email,
+                'name' => $user->name,
+            ]
         );
     }
 
@@ -76,7 +80,7 @@ class GatewayController extends Controller
 
     public function stripeWebhook(Request $request): Response
     {
-        return $this->proxy->forward(
+        return $this->proxy->forwardRaw(
             $request,
             (string) config('services.order.url'),
             '/api/webhooks/stripe'

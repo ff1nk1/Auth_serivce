@@ -3,12 +3,13 @@
 namespace App\Services;
 
 use App\Http\Requests\NotificationsRequest;
+use App\Mail\WelcomeMail;
 use App\Models\EmailLog;
+use Illuminate\Contracts\Mail\Mailable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\WelcomeMail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class NotificationService
 {
@@ -84,9 +85,19 @@ class NotificationService
      */
     public function sendWelcomeMailWithRetry(array $body): array
     {
+        return $this->sendMailWithRetry(fn () => new WelcomeMail($body), $body);
+    }
+
+    /**
+     * Отправка письма с ретраями и записью в MongoDB.
+     *
+     * @param  callable(): Mailable  $mailableFactory
+     * @return array{isSent: bool, emailLog: EmailLog, lastError: string}
+     */
+    public function sendMailWithRetry(callable $mailableFactory, array $body): array
+    {
         $emailAddress = $body['email'];
 
-        // 1. Создаем начальную запись в MongoDB
         $emailLog = EmailLog::create([
             'name'         => $body['name'] ?? null,
             'email'        => $emailAddress,
@@ -100,25 +111,22 @@ class NotificationService
         $isSent = false;
         $lastError = '';
 
-        // 2. Цикл ретраев с экспоненциальной задержкой
-        while ($attempt < self::MAX_RETRIES && !$isSent) {
+        while ($attempt < self::MAX_RETRIES && ! $isSent) {
             $attempt++;
 
             try {
-                Mail::to($emailAddress)->send(new WelcomeMail($body));
+                Mail::to($emailAddress)->send($mailableFactory());
 
-                // Успешная отправка
                 $emailLog->update([
-                    'status'  => 'sent',
-                    'retries' => $attempt,
-                    'moved_to_dlq'  => false, // Сбрасываем флаг DLQ
-                    'error_message' => null,  // Очищаем прошлую ошибку
-                    'time'    => time(),
+                    'status'        => 'sent',
+                    'retries'       => $attempt,
+                    'moved_to_dlq'  => false,
+                    'error_message' => null,
+                    'time'          => time(),
                 ]);
 
                 $isSent = true;
                 Log::info("[KAFKA УСПЕХ] Письмо отправлено на {$emailAddress} с попытки {$attempt}");
-
             } catch (\Throwable $e) {
                 $lastError = $e->getMessage();
                 $emailLog->update(['retries' => $attempt]);
@@ -126,7 +134,7 @@ class NotificationService
                 if ($attempt < self::MAX_RETRIES) {
                     $sleepTime = self::INITIAL_BACKOFF_SEC * (2 ** ($attempt - 1));
 
-                    Log::warning("SMTP Сбой (Попытка {$attempt}/" . self::MAX_RETRIES . "). Ждем {$sleepTime} сек...", [
+                    Log::warning("SMTP Сбой (Попытка {$attempt}/".self::MAX_RETRIES."). Ждем {$sleepTime} сек...", [
                         'email' => $emailAddress,
                         'error' => $lastError,
                     ]);

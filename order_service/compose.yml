@@ -24,6 +24,15 @@ services:
       REDIS_PORT: 6379
       KAFKA_BROKERS: kafka:29092
       APP_URL: http://order_service_app:8004
+      CATALOG_DB_HOST: catalog_service_db
+      CATALOG_DB_PORT: 5432
+      CATALOG_DB_DATABASE: catalog_db
+      CATALOG_DB_USERNAME: laravel
+      CATALOG_DB_PASSWORD: secret
+      # STRIPE_SECRET / STRIPE_WEBHOOK_SECRET come from env_file (.env) only —
+      # do not set ${STRIPE_*} here: root compose has no values and would overwrite with "".
+      STRIPE_SUCCESS_URL: https://app.localhost/orders/{ORDER_ID}?paid=1
+      STRIPE_CANCEL_URL: https://app.localhost/orders/{ORDER_ID}?canceled=1
     depends_on:
       order_db:
         condition: service_started
@@ -81,6 +90,54 @@ services:
       REDIS_PORT: 6379
       KAFKA_BROKERS: kafka:29092
       # Avoid Predis stream errors killing the consumer on Redis blips during stack restarts.
+      KAFKA_CACHE_DRIVER: array
+    depends_on:
+      - order_app
+      - order_db
+      - order_redis
+    networks:
+      - php_project_net
+
+  order_kafka_stock_consumer:
+    image: order_service:local
+    pull_policy: never
+    container_name: order_kafka_stock_consumer
+    restart: unless-stopped
+    command: php artisan kafka:consume:stock-events
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      DB_HOST: order_service_db
+      DB_PORT: 5432
+      REDIS_HOST: order_service_redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CACHE_DRIVER: array
+    depends_on:
+      - order_app
+      - order_db
+      - order_redis
+    networks:
+      - php_project_net
+
+  order_kafka_outbox_worker:
+    image: order_service:local
+    pull_policy: never
+    container_name: order_kafka_outbox_worker
+    restart: unless-stopped
+    command: php artisan kafka:outbox:work
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      DB_HOST: order_service_db
+      DB_PORT: 5432
+      REDIS_HOST: order_service_redis
+      REDIS_PORT: 6379
+      KAFKA_BROKERS: kafka:29092
       KAFKA_CACHE_DRIVER: array
     depends_on:
       - order_app
