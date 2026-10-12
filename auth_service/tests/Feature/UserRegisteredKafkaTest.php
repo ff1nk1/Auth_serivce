@@ -55,6 +55,7 @@ class UserRegisteredKafkaTest extends TestCase
                 'user_id' => $user->id,
                 'email' => 'john@example.com',
                 'name' => 'John Doe',
+                'event_type' => 'user.registered',
             ],
             key: (string) $user->id
         );

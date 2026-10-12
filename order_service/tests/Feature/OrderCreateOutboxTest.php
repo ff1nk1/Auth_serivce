@@ -58,6 +58,7 @@ class OrderCreateOutboxTest extends TestCase
         $this->assertNotNull($event);
         $this->assertSame('order.events', $event->topic);
         $this->assertSame($orderId, $event->payload['order_id']);
+        $this->assertSame('order.created', $event->payload['event_type'] ?? null);
         $this->assertIsString($event->payload['saga_id'] ?? null);
         $this->assertNotSame('', $event->payload['saga_id']);
         $this->assertDatabaseHas('orders', [

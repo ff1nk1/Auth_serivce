@@ -76,6 +76,8 @@ class PaymentServiceWebhookUnitTest extends TestCase
         $this->assertNotNull($confirmed);
         $this->assertSame('paid@example.com', $paid->payload['email'] ?? null);
         $this->assertSame('confirmed', $paid->payload['status'] ?? null);
+        $this->assertSame('order.paid', $paid->payload['event_type'] ?? null);
+        $this->assertSame('order.confirmed', $confirmed->payload['event_type'] ?? null);
     }
 
     public function test_checkout_expired_requests_stock_release(): void

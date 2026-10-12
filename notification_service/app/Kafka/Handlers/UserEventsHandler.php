@@ -17,15 +17,25 @@ class UserEventsHandler
     public function __invoke(ConsumerMessage $message): void
     {
         $body = $message->getBody();
-        $emailAddress = $body['email'] ?? null;
+        if (! is_array($body)) {
+            Log::warning('Kafka user.events: тело сообщения не массив');
 
-        if (!$emailAddress) {
-            Log::warning('Kafka: Сообщение пропущено, отсутствует email', ['body' => $body]);
             return;
         }
 
-        // Вызываем сервис отправки писем
-        $result = $this->notificationService->sendWelcomeMailWithRetry($body);
+        $emailAddress = $body['email'] ?? null;
+
+        if (! $emailAddress) {
+            Log::warning('Kafka: Сообщение пропущено, отсутствует email', ['body' => $body]);
+
+            return;
+        }
+
+        $headers = $message->getHeaders() ?? [];
+        $eventType = $headers['event-type']
+            ?? ($body['event_type'] ?? 'user.registered');
+
+        $result = $this->notificationService->sendWelcomeMailWithRetry($body, $eventType);
 
         // Если все попытки исчерпаны — отправляем в DLQ
         if (!$result['isSent']) {

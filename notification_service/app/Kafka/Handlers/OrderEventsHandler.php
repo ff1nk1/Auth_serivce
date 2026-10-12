@@ -2,12 +2,8 @@
 
 namespace App\Kafka\Handlers;
 
-use App\Mail\OrderCancelledMail;
-use App\Mail\OrderConfirmedMail;
-use App\Mail\OrderPaidMail;
 use App\Models\EmailLog;
 use App\Services\NotificationService;
-use Illuminate\Contracts\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Contracts\ConsumerMessage;
 use Junges\Kafka\Facades\Kafka;
@@ -21,17 +17,19 @@ class OrderEventsHandler
     public function __invoke(ConsumerMessage $message): void
     {
         $headers = $message->getHeaders() ?? [];
-        $eventType = $headers['event-type'] ?? null;
         $body = $message->getBody();
 
         if (! is_array($body)) {
-            Log::warning('Kafka order.events: тело сообщения не массив', ['event-type' => $eventType]);
+            Log::warning('Kafka order.events: тело сообщения не массив', [
+                'event-type' => $headers['event-type'] ?? null,
+            ]);
 
             return;
         }
 
-        $factory = $this->mailableFactoryFor($eventType, $body);
-        if ($factory === null) {
+        $eventType = $headers['event-type'] ?? ($body['event_type'] ?? null);
+
+        if (! in_array($eventType, ['order.paid', 'order.confirmed', 'order.cancelled'], true)) {
             Log::debug("Игнорируем событие order.events: {$eventType}");
 
             return;
@@ -47,25 +45,12 @@ class OrderEventsHandler
             return;
         }
 
-        $result = $this->notificationService->sendMailWithRetry($factory, $body);
+        $factory = fn () => $this->notificationService->mailableForEventType($eventType, $body);
+        $result = $this->notificationService->sendMailWithRetry($factory, $body, $eventType);
 
         if (! $result['isSent']) {
             $this->sendToDlq($message, $result['emailLog'], $result['lastError']);
         }
-    }
-
-    /**
-     * @param  array<string, mixed>  $body
-     * @return (callable(): Mailable)|null
-     */
-    private function mailableFactoryFor(?string $eventType, array $body): ?callable
-    {
-        return match ($eventType) {
-            'order.paid' => fn () => new OrderPaidMail($body),
-            'order.confirmed' => fn () => new OrderConfirmedMail($body),
-            'order.cancelled' => fn () => new OrderCancelledMail($body),
-            default => null,
-        };
     }
 
     private function sendToDlq(ConsumerMessage $message, EmailLog $emailLog, string $errorMessage): void

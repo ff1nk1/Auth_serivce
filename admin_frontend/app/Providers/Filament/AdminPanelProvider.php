@@ -38,6 +38,7 @@ class AdminPanelProvider extends PanelProvider
                 \App\Filament\Pages\ManageUsers::class,
                 \App\Filament\Pages\ManageOrders::class,
                 \App\Filament\Pages\ManageNotifications::class,
+                \App\Filament\Pages\ViewNotification::class,
             ])
             ->widgets([
                 AccountWidget::class,

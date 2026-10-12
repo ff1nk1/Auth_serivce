@@ -44,6 +44,8 @@ class OrderEventsHandlerTest extends TestCase
         $log = EmailLog::where('email', $body['email'])->first();
         $this->assertNotNull($log);
         $this->assertSame('sent', $log->status);
+        $this->assertSame('order.paid', $log->event_type);
+        $this->assertSame('order.paid', $log->payload['event_type'] ?? null);
     }
 
     public function test_handler_sends_order_confirmed_mail(): void
@@ -54,7 +56,10 @@ class OrderEventsHandlerTest extends TestCase
         app(OrderEventsHandler::class)($this->message('order.confirmed', $body));
 
         Mail::assertSent(OrderConfirmedMail::class);
-        $this->assertSame(1, EmailLog::where('status', 'sent')->count());
+        $log = EmailLog::where('status', 'sent')->first();
+        $this->assertNotNull($log);
+        $this->assertSame('order.confirmed', $log->event_type);
+        $this->assertSame('order.confirmed', $log->payload['event_type'] ?? null);
     }
 
     public function test_handler_sends_order_cancelled_mail(): void
@@ -67,6 +72,24 @@ class OrderEventsHandlerTest extends TestCase
         Mail::assertSent(OrderCancelledMail::class, function (OrderCancelledMail $mail) {
             return ($mail->payload['reason'] ?? null) === 'insufficient_stock';
         });
+    }
+
+    public function test_handler_uses_event_type_from_body_when_header_missing(): void
+    {
+        Mail::fake();
+
+        $body = $this->orderBody(['event_type' => 'order.paid']);
+        $message = Mockery::mock(ConsumerMessage::class);
+        $message->shouldReceive('getHeaders')->andReturn([]);
+        $message->shouldReceive('getBody')->andReturn($body);
+        $message->shouldReceive('getKey')->andReturn('42');
+
+        app(OrderEventsHandler::class)($message);
+
+        Mail::assertSent(OrderPaidMail::class);
+        $log = EmailLog::where('email', $body['email'])->first();
+        $this->assertNotNull($log);
+        $this->assertSame('order.paid', $log->event_type);
     }
 
     public function test_handler_ignores_unknown_event_types(): void
@@ -131,6 +154,8 @@ class OrderEventsHandlerTest extends TestCase
         $this->assertSame('failed', $log->status);
         $this->assertTrue((bool) $log->moved_to_dlq);
         $this->assertSame($maxRetries, $log->retries);
+        $this->assertSame('order.paid', $log->event_type);
+        $this->assertSame('order.paid', $log->payload['event_type'] ?? null);
         $this->assertStringContainsString('SMTP permanently down', (string) $log->error_message);
 
         Kafka::assertPublishedOn('order.events.dlq');

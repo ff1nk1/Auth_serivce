@@ -111,6 +111,11 @@ class AuthApiClient
         return $this->send('get', "/notifications/{$id}")->throw()->json();
     }
 
+    public function resendNotification(string $id): Response
+    {
+        return $this->send('post', "/notifications/{$id}/resend");
+    }
+
     public function logout(): void
     {
         try {

@@ -5,6 +5,8 @@ namespace App\Filament\Pages;
 use App\Filament\Concerns\AllowsAdminOrAnalyst;
 use App\Filament\Concerns\BuildsApiTablePaginator;
 use App\Services\AuthApiClient;
+use Filament\Actions\Action;
+use Filament\Notifications\Notification as FilamentNotification;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -43,9 +45,42 @@ class ManageNotifications extends Page implements HasTable
                 TextColumn::make('id')->label('ID')->limit(12),
                 TextColumn::make('email')->label('Email'),
                 TextColumn::make('status')->label('Status')->badge(),
-                TextColumn::make('name')->label('Template')->limit(40),
+                TextColumn::make('name')->label('Recipient')->limit(40),
+                TextColumn::make('event_type')->label('Event')->limit(24),
                 TextColumn::make('error_message')->label('Error')->limit(40),
                 TextColumn::make('time')->label('Time'),
+            ])
+            ->recordActions([
+                Action::make('view')
+                    ->label('View')
+                    ->icon('heroicon-o-eye')
+                    ->url(fn (array $record): string => ViewNotification::getUrl([
+                        'record' => ViewNotification::recordIdFrom($record),
+                    ])),
+                Action::make('resend')
+                    ->label('Resend')
+                    ->icon('heroicon-o-arrow-path')
+                    ->visible(fn (array $record): bool => ($record['status'] ?? '') === 'failed')
+                    ->requiresConfirmation()
+                    ->modalHeading('Resend this email?')
+                    ->action(function (array $record): void {
+                        $id = ViewNotification::recordIdFrom($record);
+                        $response = app(AuthApiClient::class)->resendNotification($id);
+
+                        if ($response->successful()) {
+                            FilamentNotification::make()
+                                ->title($response->json('message') ?? 'Notification sent')
+                                ->success()
+                                ->send();
+
+                            return;
+                        }
+
+                        FilamentNotification::make()
+                            ->title($response->json('message') ?? 'Resend failed')
+                            ->danger()
+                            ->send();
+                    }),
             ]);
     }
 }

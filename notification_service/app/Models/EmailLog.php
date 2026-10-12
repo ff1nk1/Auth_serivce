@@ -25,6 +25,7 @@ class EmailLog extends Model
         'error_message',
         'name',
         'time',
+        'event_type',
     ];
 
     protected static function newFactory(): EmailLogFactory

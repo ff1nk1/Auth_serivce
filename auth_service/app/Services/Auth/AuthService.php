@@ -47,6 +47,7 @@ class AuthService
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'name'  => $user->name,
+                'event_type' => 'user.registered',
             ])
             ->send();
     } catch (\Throwable $e) {

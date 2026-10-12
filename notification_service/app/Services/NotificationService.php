@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Http\Requests\NotificationsRequest;
+use App\Mail\OrderCancelledMail;
+use App\Mail\OrderConfirmedMail;
+use App\Mail\OrderPaidMail;
 use App\Mail\WelcomeMail;
 use App\Models\EmailLog;
 use Illuminate\Contracts\Mail\Mailable;
@@ -51,41 +54,102 @@ class NotificationService
         return $query->orderBy('created_at', 'desc')->paginate($perPage);
     }
 
-    public function send_email($notification)
+    public function send_email(EmailLog $notification): bool
     {
+        $eventType = $this->resolveEventTypeForResend($notification);
+        if ($eventType === null) {
+            throw new \InvalidArgumentException(
+                'У записи нет event_type: переотправка невозможна (order.paid и order.confirmed неразличимы по payload).'
+            );
+        }
+
         $email = $notification->email;
-        $name = $notification->name;
-        try{
-            Mail::to($email)->send(new WelcomeMail([
-                "email"=> $email,
-                "name"=>$name,
-                ]));
+        $payload = is_array($notification->payload) ? $notification->payload : [];
+        $payload['email'] = $email;
+        $payload['event_type'] = $eventType;
+        if ($notification->name !== null && $notification->name !== '') {
+            $payload['name'] = $notification->name;
+        }
+
+        try {
+            Mail::to($email)->send(
+                $this->mailableForEventType($eventType, $payload)
+            );
 
             $notification->update([
-            'status'        => 'sent',
-            'error_message' => null,
-            'time'          => time(),
+                'status'        => 'sent',
+                'error_message' => null,
+                'time'          => time(),
+                'event_type'    => $eventType,
             ]);
-            return true;
 
-        }catch (\Exception $e)
-        {
-            $lastError = $e->getMessage();
+            return true;
+        } catch (\Exception $e) {
             $notification->update([
                 'status'        => 'failed',
-                'error_message' => 'Ошибка отправки из админки: ' . $e->getMessage(),
-        ]);
+                'error_message' => 'Ошибка отправки из админки: '.$e->getMessage(),
+            ]);
+
             return false;
         }
-        
+    }
+
+    /**
+     * Resolve mail template type for admin resend.
+     * Order paid/confirmed share the same payload — never guess between them.
+     *
+     * @return string|null null when order mail cannot be uniquely typed
+     */
+    public function resolveEventTypeForResend(EmailLog $notification): ?string
+    {
+        if (is_string($notification->event_type) && $notification->event_type !== '') {
+            return $notification->event_type;
+        }
+
+        $payload = is_array($notification->payload) ? $notification->payload : [];
+        $fromPayload = $payload['event_type'] ?? null;
+        if (is_string($fromPayload) && $fromPayload !== '') {
+            return $fromPayload;
+        }
+
+        // Ambiguous: order.paid vs order.confirmed have identical bodies
+        if (isset($payload['order_id'])) {
+            return null;
+        }
+
+        return 'user.registered';
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function mailableForEventType(?string $eventType, array $payload): Mailable
+    {
+        $resolved = $eventType;
+        if ($resolved === null || $resolved === '') {
+            $fromPayload = $payload['event_type'] ?? null;
+            $resolved = is_string($fromPayload) && $fromPayload !== '' ? $fromPayload : null;
+        }
+
+        return match ($resolved) {
+            'order.paid' => new OrderPaidMail($payload),
+            'order.confirmed' => new OrderConfirmedMail($payload),
+            'order.cancelled' => new OrderCancelledMail($payload),
+            'user.registered', null => new WelcomeMail($payload),
+            default => new WelcomeMail($payload),
+        };
     }
 
     /**
      * Отправка Welcome-письма с логикой повторных попыток и записью в MongoDB
      */
-    public function sendWelcomeMailWithRetry(array $body): array
+    public function sendWelcomeMailWithRetry(array $body, ?string $eventType = 'user.registered'): array
     {
-        return $this->sendMailWithRetry(fn () => new WelcomeMail($body), $body);
+        return $this->sendMailWithRetry(
+            fn () => new WelcomeMail($body),
+            $body,
+            $eventType
+        );
     }
 
     /**
@@ -94,9 +158,14 @@ class NotificationService
      * @param  callable(): Mailable  $mailableFactory
      * @return array{isSent: bool, emailLog: EmailLog, lastError: string}
      */
-    public function sendMailWithRetry(callable $mailableFactory, array $body): array
+    public function sendMailWithRetry(callable $mailableFactory, array $body, ?string $eventType = null): array
     {
         $emailAddress = $body['email'];
+
+        $payload = $body;
+        if ($eventType !== null && $eventType !== '') {
+            $payload['event_type'] = $eventType;
+        }
 
         $emailLog = EmailLog::create([
             'name'         => $body['name'] ?? null,
@@ -104,7 +173,8 @@ class NotificationService
             'status'       => 'pending',
             'retries'      => 0,
             'moved_to_dlq' => false,
-            'payload'      => $body,
+            'payload'      => $payload,
+            'event_type'   => $eventType,
         ]);
 
         $attempt = 0;

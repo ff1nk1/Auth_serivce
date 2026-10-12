@@ -28,7 +28,10 @@ class WelcomeMailMailhogTest extends TestCase
 
         EmailLog::truncate();
 
-        // Clear MailHog inbox
+        if (! $this->mailhogIsReachable()) {
+            $this->markTestSkipped('MailHog is not running on 127.0.0.1:8025.');
+        }
+
         Http::delete('http://127.0.0.1:8025/api/v1/messages');
     }
 
@@ -71,6 +74,17 @@ class WelcomeMailMailhogTest extends TestCase
         $subject = $matched['Content']['Headers']['Subject'][0] ?? '';
         $decodedSubject = iconv_mime_decode($subject, ICONV_MIME_DECODE_CONTINUE_ON_ERROR, 'UTF-8') ?: $subject;
         $this->assertStringContainsString('Добро пожаловать', $decodedSubject);
+    }
+
+    private function mailhogIsReachable(): bool
+    {
+        try {
+            $response = Http::timeout(1)->get('http://127.0.0.1:8025/api/v2/messages');
+
+            return $response->successful();
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }
 
