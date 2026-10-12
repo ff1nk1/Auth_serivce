@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { authApi } from '../api/authClient';
-import CartNavLink from '../cart/CartNavLink';
 import '../css/profile.css';
 
 export default function Profile({ user }) {
@@ -113,13 +111,6 @@ export default function Profile({ user }) {
         <div className="profile-badges">
           <span className="badge">ID: {user.id}</span>
           <span className="badge">Role ID: {user.role_id}</span>
-          <Link to="/orders" className="badge">Мои заказы →</Link>
-          <CartNavLink className="badge" />
-          <Link to="/categories" className="badge">Каталог →</Link>
-          <Link to="/search" className="badge">Поиск →</Link>
-          {(user.role?.slug === 'admin' || user.role?.slug === 'analyst') && (
-            <Link to="/admin" className="badge">Админка →</Link>
-          )}
         </div>
 
         {/* Статусное сообщение об успехе или ошибке */}

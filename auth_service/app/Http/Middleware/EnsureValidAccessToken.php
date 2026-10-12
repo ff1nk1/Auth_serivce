@@ -2,10 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Services\Auth\AuthService;
 use App\Services\Auth\JwtService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -24,6 +26,8 @@ class EnsureValidAccessToken
         $user = $this->jwtService->userFromRequest($request);
 
         if ($user) {
+            $this->setApiUser($user);
+
             return $next($request);
         }
 
@@ -50,10 +54,19 @@ class EnsureValidAccessToken
         $request->cookies->set('refresh_token', $tokens['refresh_token']);
         $request->headers->set('Authorization', 'Bearer '.$tokens['access_token']);
 
+        if ($tokens['user'] instanceof User) {
+            $this->setApiUser($tokens['user']);
+        }
+
         /** @var Response $response */
         $response = $next($request);
 
         return $this->attachTokenCookies($response, $tokens['access_token'], $tokens['refresh_token']);
+    }
+
+    private function setApiUser(User $user): void
+    {
+        Auth::guard('api')->setUser($user);
     }
 
     private function attachTokenCookies(Response $response, string $accessToken, string $refreshToken): Response

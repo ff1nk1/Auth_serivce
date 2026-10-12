@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLoaderData, useNavigate, useRevalidator, useSearchParams } from 'react-router-dom'
 import { orderApi } from '../api/orderClient'
-import CartNavLink from '../cart/CartNavLink'
 import '../css/orders.css'
 
 const RESERVE_POLL_MS = 2000
@@ -196,8 +195,6 @@ export default function OrderDetail() {
       <div className="orders-container">
         <div className="orders-nav">
           <Link to="/orders">← Мои заказы</Link>
-          <CartNavLink />
-          <Link to="/categories">Каталог</Link>
         </div>
         <div className="orders-card">
           <div className="orders-header">

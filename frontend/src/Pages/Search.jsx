@@ -238,11 +238,6 @@ export default function Search() {
             <div className="catalog-card search-layout">
                 <div className="catalog-header">
                     <h1>Поиск</h1>
-                    <p>
-                        <Link to="/categories" className="category-link">Каталог →</Link>
-                        {' · '}
-                        <Link to="/profile" className="category-link">Профиль →</Link>
-                    </p>
                     <form className="filters-form search-main-form" onSubmit={onSearchSubmit}>
                         <div className="filters-wrapper">
                             <div

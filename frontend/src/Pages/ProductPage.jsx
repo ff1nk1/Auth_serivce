@@ -3,7 +3,6 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { catalogApi } from '../api/catalogClient';
 import { orderApi } from '../api/orderClient';
 import { useCart } from '../cart/CartContext';
-import CartNavLink from '../cart/CartNavLink';
 import { formatImageUrl, PLACEHOLDER_IMAGE } from '../utils/formatImageUrl';
 import '../css/product_page.css';
 import '../css/orders.css';
@@ -160,12 +159,7 @@ export default function ProductPage() {
                     {cartMessage && <div className="status-message success">{cartMessage}</div>}
                     {orderMessage && <div className="status-message success">{orderMessage}</div>}
                     {orderError && <div className="status-message error">{orderError}</div>}
-                    <p>
-                        <CartNavLink />
-                        {' · '}
-                        <Link to="/orders">Мои заказы →</Link>
-                    </p>
-                    
+
                     {/* Блок характеристик (показываем, если есть attributes) */}
                     {product.attributes && product.attributes.length > 0 && (
                         <div className="product-attributes-block">

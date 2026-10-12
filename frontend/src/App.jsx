@@ -27,6 +27,7 @@ import AdminOrders from './admin/AdminOrders'
 import AdminNotifications from './admin/AdminNotifications'
 import AdminNotificationDetail from './admin/AdminNotificationDetail'
 
+import AppLayout, { appLayoutLoader } from './layouts/AppLayout'
 import RootErrorBoundary from './RootErrorBoundary'
 import {
   adminLayoutLoader,
@@ -43,18 +44,19 @@ const router = createBrowserRouter(
     <Route errorElement={<RootErrorBoundary />}>
       <Route path="/login" element={<Login />} />
       <Route path="/registration" element={<Registration />} />
-      <Route path="/search" element={<Search />} />
 
-      <Route path="/profile" element={<ProfilePage />} loader={requireAuth} />
-      <Route path="/categories" element={<Categories />} loader={requireAuth} />
-      <Route path="/categories/:slug" element={<CategoryProducts />} loader={requireAuth} />
-      <Route path="/stores" element={<Stores />} loader={requireAuth} />
-      <Route path="/stores/:storeId/products" element={<StoreProducts />} loader={requireAuth} />
-      <Route path="/products/:id" element={<ProductPage />} loader={requireAuth} />
-      <Route path="/cart" element={<Cart />} loader={requireAuth} />
-
-      <Route path="/orders" element={<Orders />} loader={ordersLoader} />
-      <Route path="/orders/:id" element={<OrderDetail />} loader={orderDetailLoader} />
+      <Route element={<AppLayout />} loader={appLayoutLoader}>
+        <Route path="/search" element={<Search />} />
+        <Route path="/profile" element={<ProfilePage />} loader={requireAuth} />
+        <Route path="/categories" element={<Categories />} loader={requireAuth} />
+        <Route path="/categories/:slug" element={<CategoryProducts />} loader={requireAuth} />
+        <Route path="/stores" element={<Stores />} loader={requireAuth} />
+        <Route path="/stores/:storeId/products" element={<StoreProducts />} loader={requireAuth} />
+        <Route path="/products/:id" element={<ProductPage />} loader={requireAuth} />
+        <Route path="/cart" element={<Cart />} loader={requireAuth} />
+        <Route path="/orders" element={<Orders />} loader={ordersLoader} />
+        <Route path="/orders/:id" element={<OrderDetail />} loader={orderDetailLoader} />
+      </Route>
 
       <Route path="/admin" element={<AdminLayout />} loader={adminLayoutLoader}>
         <Route index element={<AdminHub />} />

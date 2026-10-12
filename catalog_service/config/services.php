@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    /*
+    | Match auth_service JWT cookie domain so Filament logout can clear cookies.
+    | Leave empty for host-only cookies (required for app.localhost).
+    */
+    'jwt' => [
+        'cookie_domain' => env('JWT_COOKIE_DOMAIN') ?: null,
+    ],
+
 ];

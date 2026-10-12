@@ -1,0 +1,46 @@
+<?php
+
+namespace Tests\Feature;
+
+use Filament\Facades\Filament;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class AdminCatalogLogoutTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_gateway_request_guard_supports_logout(): void
+    {
+        $this->withHeaders([
+            'X-User-Id' => '42',
+            'X-User-Role' => 'admin',
+            'X-User-Name' => 'Yan Admin',
+            'X-User-Email' => 'yan@example.com',
+        ]);
+
+        $response = $this->get('/admin-catalog');
+        $this->assertTrue(in_array($response->status(), [200, 302], true));
+
+        $guard = Filament::auth();
+        $this->assertNotNull($guard->user());
+
+        // RequestGuard has no logout() by default — macro must make this a no-throw.
+        $guard->logout();
+        $this->assertTrue(true);
+    }
+
+    public function test_filament_logout_redirects_to_login_and_clears_jwt_cookies(): void
+    {
+        $response = $this->withHeaders([
+            'X-User-Id' => '42',
+            'X-User-Role' => 'admin',
+            'X-User-Name' => 'Yan Admin',
+            'X-User-Email' => 'yan@example.com',
+        ])->post('/admin-catalog/logout');
+
+        $response->assertRedirect('/login');
+        $response->assertCookieExpired('access_token');
+        $response->assertCookieExpired('refresh_token');
+    }
+}

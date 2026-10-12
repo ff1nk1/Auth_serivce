@@ -1,41 +1,12 @@
-// ProfilePage.jsx
-import { useEffect, useState } from 'react';
-import { authApi } from '../api/authClient' 
-import Profile from './Profile'; 
+import { useLoaderData } from 'react-router-dom'
+import Profile from './Profile'
 
 export default function ProfilePage() {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const user = useLoaderData()
 
-  useEffect(() => {
-    // 1. Как только пользователь заходит на /profile, срабатывает этот useEffect
-    // 2. Делаем GET запрос на бэкенд, чтобы получить текущего юзера
-    // (Укажи здесь правильный URL твоего бэкенда, например '/api/user' или '/me')
-    authApi.get('/user') 
-      .then((response) => {
-        // 3. Бэкенд ответил 200 OK. Сохраняем пользователя в стейт
-        setUser(response.data);
-      })
-      .catch((error) => {
-        // 4. Если бэкенд ответил 401 (не авторизован), твой axios-перехватчик 
-        // сам сделает refresh или выкинет на /login.
-        console.error('Не удалось загрузить пользователя', error);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []); // Пустой массив означает: выполнить 1 раз при заходе на страницу
-
-  // Пока ждем ответ от сервера, показываем крутилку/текст
-  if (isLoading) {
-    return <div style={{ textAlign: 'center', marginTop: '50px' }}>Загрузка профиля...</div>;
-  }
-
-  // Если юзер не загрузился (например, нет прав), ничего не показываем
   if (!user) {
-    return null;
+    return null
   }
 
-  // 5. Данные получены! Рендерим твой компонент и передаем в него user
-  return <Profile user={user} />;
+  return <Profile user={user} />
 }

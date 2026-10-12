@@ -84,4 +84,48 @@ class CatalogAdminPanelProxyTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_admin_catalog_logout_revokes_tokens_and_clears_cookies(): void
+    {
+        Http::fake([
+            '*/admin-catalog/logout' => Http::response('', 302, [
+                'Location' => '/login',
+                'Content-Type' => 'text/html; charset=UTF-8',
+            ]),
+        ]);
+
+        $adminRole = Role::where('slug', 'admin')->firstOrFail();
+        User::factory()->create([
+            'email' => 'admin-logout@example.com',
+            'password' => Hash::make('password123'),
+            'role_id' => $adminRole->id,
+        ]);
+
+        $tokens = app(AuthService::class)->login([
+            'email' => 'admin-logout@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response = $this->withToken($tokens['access_token'])
+            ->withUnencryptedCookie('refresh_token', $tokens['refresh_token'])
+            ->post('/admin-catalog/logout');
+
+        $response->assertStatus(302);
+        $response->assertCookieExpired('access_token');
+        $response->assertCookieExpired('refresh_token');
+
+        $jwt = app(\App\Services\Auth\JwtService::class);
+        $decoded = $jwt->decode($tokens['access_token']);
+        $this->assertTrue(
+            Redis::exists("jwt:blacklist:{$decoded->jti}") > 0,
+            'Access token JTI must be blacklisted after admin-catalog logout'
+        );
+
+        $probe = \Illuminate\Http\Request::create('/api/user', 'GET');
+        $probe->headers->set('Authorization', 'Bearer '.$tokens['access_token']);
+        $this->assertNull(
+            $jwt->userFromRequest($probe),
+            'Blacklisted access token must not resolve a user'
+        );
+    }
+
 }

@@ -3,7 +3,10 @@
 namespace App\Providers;
 
 use App\Http\Middleware\AuthenticateFromGatewayHeaders;
+use App\Http\Responses\FilamentLogoutResponse;
 use App\Models\User;
+use Filament\Auth\Http\Responses\Contracts\LogoutResponse as LogoutResponseContract;
+use Illuminate\Auth\RequestGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -17,11 +20,17 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(LogoutResponseContract::class, FilamentLogoutResponse::class);
     }
 
     public function boot(): void
     {
+        // Filament calls Guard::logout(); RequestGuard (viaRequest) does not define it.
+        RequestGuard::macro('logout', function (): void {
+            /** @var RequestGuard $this */
+            $this->user = null;
+        });
+
         Auth::viaRequest('gateway-headers', function (Request $request): ?User {
             $userId = $request->header('X-User-Id');
             $role = $request->header('X-User-Role');

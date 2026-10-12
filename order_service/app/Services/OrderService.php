@@ -27,10 +27,12 @@ class OrderService
         }
 
         if (! $this->idempotency->acquireLock($idempotencyKey)) {
-            usleep(200_000);
-            $cached = $this->idempotency->get($idempotencyKey);
-            if ($cached !== null) {
-                return $cached;
+            for ($attempt = 0; $attempt < 2; $attempt++) {
+                usleep(50_000);
+                $cached = $this->idempotency->get($idempotencyKey);
+                if ($cached !== null) {
+                    return $cached;
+                }
             }
 
             throw new ConflictHttpException('Order creation already in progress for this idempotency key.');
@@ -248,11 +250,21 @@ class OrderService
             $outboxItems = [];
             $total = '0.00';
 
+            $productIds = array_values(array_unique(array_map(
+                static fn (array $item): int => (int) $item['product_id'],
+                $items
+            )));
+
+            $snapshots = ProductSnapshot::query()
+                ->whereIn('id', $productIds)
+                ->get()
+                ->keyBy('id');
+
             foreach ($items as $item) {
                 $productId = (int) $item['product_id'];
                 $quantity = (int) $item['quantity'];
 
-                $snapshot = ProductSnapshot::query()->find($productId);
+                $snapshot = $snapshots->get($productId);
                 if ($snapshot === null) {
                     throw ValidationException::withMessages([
                         'items' => ["Product snapshot not found for product_id {$productId}"],

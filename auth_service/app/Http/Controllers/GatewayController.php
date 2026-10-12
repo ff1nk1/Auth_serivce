@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Auth\AuthService;
 use App\Services\Gateway\ProxyService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -9,7 +10,8 @@ use Symfony\Component\HttpFoundation\Response;
 class GatewayController extends Controller
 {
     public function __construct(
-        private ProxyService $proxy
+        private ProxyService $proxy,
+        private AuthService $authService,
     ) {}
 
     public function catalog(Request $request, string $path = ''): Response
@@ -35,7 +37,7 @@ class GatewayController extends Controller
         $user = $request->user();
         $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
 
-        return $this->proxy->forwardHtml(
+        $response = $this->proxy->forwardHtml(
             $request,
             (string) config('services.catalog.url'),
             '/admin-catalog'.$suffix,
@@ -46,6 +48,35 @@ class GatewayController extends Controller
                 'email' => (string) ($user->email ?? ''),
             ]
         );
+
+        // Filament POST /admin-catalog/logout — revoke JWT so the panel cannot be re-entered
+        // with the same cookies after the catalog clears its session.
+        $normalizedPath = rtrim(ltrim((string) $path, '/'), '/');
+        $isFilamentLogout = strtoupper($request->method()) === 'POST'
+            && (
+                $request->is('admin-catalog/logout')
+                || $normalizedPath === 'logout'
+                || str_ends_with($normalizedPath, '/logout')
+            )
+            && $response->getStatusCode() < 400;
+
+        if ($isFilamentLogout) {
+            $accessToken = $request->bearerToken() ?: $request->cookie('access_token');
+            $refreshToken = $request->cookie('refresh_token');
+
+            $this->authService->logout(
+                is_string($accessToken) && $accessToken !== '' ? $accessToken : null,
+                is_string($refreshToken) && $refreshToken !== '' ? $refreshToken : null,
+            );
+
+            $domain = config('jwt.cookie_domain');
+
+            return $response
+                ->withoutCookie('access_token', '/', $domain)
+                ->withoutCookie('refresh_token', '/', $domain);
+        }
+
+        return $response;
     }
 
     public function uploadUrl(Request $request): Response

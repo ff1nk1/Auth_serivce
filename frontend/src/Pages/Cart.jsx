@@ -51,11 +51,6 @@ export default function Cart() {
   return (
     <div className="orders-page">
       <div className="orders-container">
-        <div className="orders-nav">
-          <Link to="/categories">← Каталог</Link>
-          <Link to="/orders">Мои заказы</Link>
-          <Link to="/profile">Профиль</Link>
-        </div>
         <div className="orders-card">
           <div className="orders-header">
             <h1>Корзина</h1>

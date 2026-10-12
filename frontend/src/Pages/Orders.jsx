@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { orderApi } from '../api/orderClient'
-import CartNavLink from '../cart/CartNavLink'
 import '../css/orders.css'
 
 export default function Orders() {
@@ -34,11 +33,6 @@ export default function Orders() {
   return (
     <div className="orders-page">
       <div className="orders-container">
-        <div className="orders-nav">
-          <Link to="/categories">← Каталог</Link>
-          <CartNavLink />
-          <Link to="/profile">Профиль</Link>
-        </div>
         <div className="orders-card">
           <div className="orders-header">
             <h1>Мои заказы</h1>

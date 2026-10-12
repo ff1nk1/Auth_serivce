@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { catalogApi } from '../api/catalogClient';
-import CartNavLink from '../cart/CartNavLink';
 import CatalogSearchBar from '../components/CatalogSearchBar';
 import '../css/catalog.css';
 
@@ -26,17 +25,6 @@ export default function Categories() {
                     <h1>Каталог</h1>
                     <p>Выберите интересующий вас раздел</p>
                     <CatalogSearchBar />
-                    <p>
-                        <Link to="/stores" className="category-link">Смотреть магазины →</Link>
-                        {' · '}
-                        <Link to="/search" className="category-link">Поиск →</Link>
-                        {' · '}
-                        <CartNavLink className="category-link" />
-                        {' · '}
-                        <Link to="/orders" className="category-link">Мои заказы →</Link>
-                        {' · '}
-                        <Link to="/profile" className="category-link">Профиль →</Link>
-                    </p>
                 </div>
 
                 {loading ? (

@@ -114,7 +114,10 @@ class AuthService
         }
         Redis::del($oldKey);
 
-        return $this->generateTokens($user);
+        $tokens = $this->generateTokens($user);
+        $tokens['user'] = $user;
+
+        return $tokens;
     }
 
     /**
