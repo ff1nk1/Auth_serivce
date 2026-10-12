@@ -15,6 +15,11 @@ Route::post('/refresh', [AuthController::class, 'refresh']);
 // Stripe webhook — no JWT (external callback)
 Route::post('/webhooks/stripe', [GatewayController::class, 'stripeWebhook']);
 
+// Search — public transparent proxy (no auth)
+Route::get('/search/autocomplete', [GatewayController::class, 'searchAutocomplete']);
+Route::get('/search', [GatewayController::class, 'search']);
+
+
 Route::middleware(['ensure.token', 'cookie.token', 'auth:api'])->group(function () {
     Route::get('/user', [AuthController::class, 'get_user']);
     Route::post('/logout', [AuthController::class, 'logout']);

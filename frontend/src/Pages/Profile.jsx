@@ -116,6 +116,7 @@ export default function Profile({ user }) {
           <Link to="/orders" className="badge">Мои заказы →</Link>
           <CartNavLink className="badge" />
           <Link to="/categories" className="badge">Каталог →</Link>
+          <Link to="/search" className="badge">Поиск →</Link>
         </div>
 
         {/* Статусное сообщение об успехе или ошибке */}

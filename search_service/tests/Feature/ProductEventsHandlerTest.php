@@ -32,6 +32,9 @@ class ProductEventsHandlerTest extends TestCase
             $this->assertSame(0, $params['body']['quantity']);
             $this->assertFalse($params['body']['in_stock']);
             $this->assertSame(199.99, $params['body']['price']);
+            $this->assertSame([
+                ['name' => 'Color', 'value' => 'Black'],
+            ], $params['body']['attributes']);
 
             return true;
         }))->andReturn(['result' => 'created']);
@@ -50,6 +53,9 @@ class ProductEventsHandlerTest extends TestCase
                 'description' => 'A phone',
                 'category' => ['id' => 3, 'name' => 'Gadgets'],
                 'store' => ['id' => 7, 'name' => 'Main'],
+                'attributes' => [
+                    ['name' => 'Color', 'value' => 'Black'],
+                ],
             ],
         ]);
 

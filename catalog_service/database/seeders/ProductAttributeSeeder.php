@@ -4,10 +4,19 @@ namespace Database\Seeders;
 
 use App\Models\Product;
 use App\Models\ProductAttribute;
+use App\Services\ProductService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * Seeds product attributes and republishes products to Kafka for OpenSearch.
+ *
+ * If OpenSearch still has a non-nested `attributes` mapping (Dashboards shows "!"),
+ * recreate the index first in search_service:
+ *   php artisan opensearch:setup --recreate --force
+ * then re-run this seeder (or RepublishProductsSeeder).
+ */
 class ProductAttributeSeeder extends Seeder
 {
     /**
@@ -99,5 +108,19 @@ class ProductAttributeSeeder extends Seeder
         }
 
         Cache::tags(['products'])->flush();
+
+        // Publish product.updated so search_service indexes nested attributes in OpenSearch.
+        $service = app(ProductService::class);
+        Product::query()
+            ->with(['store', 'category', 'attributes'])
+            ->orderBy('id')
+            ->each(fn (Product $product) => $service->updateProduct($product, [
+                'name' => $product->name,
+            ]));
+
+        $this->command?->info(sprintf(
+            'Seeded attributes and republished %d products to Kafka.',
+            Product::query()->count()
+        ));
     }
 }

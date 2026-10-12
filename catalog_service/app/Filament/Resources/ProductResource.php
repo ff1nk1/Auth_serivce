@@ -11,6 +11,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -58,6 +59,18 @@ class ProductResource extends Resource
                     ->maxSize(5120)
                     ->storeFiles(false)
                     ->nullable(),
+                Repeater::make('attributes')
+                    ->label('Attributes')
+                    ->schema([
+                        TextInput::make('name')->label('Name')->required()->maxLength(255),
+                        TextInput::make('value')->label('Value')->required()->maxLength(255),
+                    ])
+                    ->columns(2)
+                    ->default([])
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => ($state['name'] ?? null)
+                        ? (($state['name'] ?? '').': '.($state['value'] ?? ''))
+                        : null),
             ]);
     }
 
@@ -88,6 +101,18 @@ class ProductResource extends Resource
             ])
             ->recordActions([
                 EditAction::make()
+                    ->mutateRecordDataUsing(function (array $data, Product $record): array {
+                        $data['attributes'] = $record->attributes()
+                            ->get(['name', 'value'])
+                            ->map(fn ($attr): array => [
+                                'name' => (string) $attr->name,
+                                'value' => (string) $attr->value,
+                            ])
+                            ->values()
+                            ->all();
+
+                        return $data;
+                    })
                     ->using(fn (Product $record, array $data): Product => app(ProductService::class)->updateProduct(
                         $record,
                         static::prepareProductPayload($data, $record->image_url)

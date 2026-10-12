@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { catalogApi } from '../api/catalogClient';
+import CatalogSearchBar from '../components/CatalogSearchBar';
 import '../css/catalog.css';
 
 export default function Stores() {
@@ -22,8 +23,11 @@ export default function Stores() {
                 <div className="catalog-header">
                     <h1>Магазины</h1>
                     <p>Выберите магазин, чтобы посмотреть его товары</p>
+                    <CatalogSearchBar />
                     <p>
                         <Link to="/categories" className="category-link">← К категориям</Link>
+                        {' · '}
+                        <Link to="/search" className="category-link">Поиск →</Link>
                     </p>
                 </div>
 

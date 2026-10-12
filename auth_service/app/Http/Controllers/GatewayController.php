@@ -104,4 +104,23 @@ class GatewayController extends Controller
             '/api/webhooks/stripe'
         );
     }
+
+    public function search(Request $request): Response
+    {
+        return $this->proxy->forward(
+            $request,
+            (string) config('services.search.url'),
+            '/api/search'
+        );
+    }
+
+    public function searchAutocomplete(Request $request): Response
+    {
+        return $this->proxy->forward(
+            $request,
+            (string) config('services.search.url'),
+            '/api/search/autocomplete'
+        );
+    }
 }
+

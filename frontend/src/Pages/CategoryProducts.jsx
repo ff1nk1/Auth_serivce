@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { catalogApi } from '../api/catalogClient';
+import CatalogSearchBar from '../components/CatalogSearchBar';
 import { formatImageUrl, PLACEHOLDER_IMAGE } from '../utils/formatImageUrl';
 
 export default function CategoryProducts() {
@@ -63,6 +64,7 @@ export default function CategoryProducts() {
             <div className="catalog-card products-container">
                 <div className="catalog-header">
                     <h1>{category ? category.name : 'Загрузка...'}</h1>
+                    <CatalogSearchBar />
                 </div>
                 
                 <form className="filters-form" onSubmit={applyFilters}>

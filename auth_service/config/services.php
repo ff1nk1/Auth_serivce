@@ -47,4 +47,9 @@ return [
         'url' => env('ORDER_SERVICE_URL', 'http://order_service_app:8004'),
     ],
 
+    'search' => [
+        'url' => env('SEARCH_SERVICE_URL', 'http://search_service_app:8005'),
+    ],
+
 ];
+

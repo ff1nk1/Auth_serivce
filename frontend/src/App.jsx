@@ -18,6 +18,7 @@ import ProductPage from './Pages/ProductPage'
 import Orders from './Pages/Orders'
 import OrderDetail from './Pages/OrderDetail'
 import Cart from './Pages/Cart'
+import Search from './Pages/Search'
 
 import RootErrorBoundary from './RootErrorBoundary'
 import { notificationsLoader, notificationDetailLoader } from './notifications/loaders'
@@ -29,6 +30,7 @@ const router = createBrowserRouter(
     <Route errorElement={<RootErrorBoundary />}>
       <Route path="/login" element={<Login />} />
       <Route path="/registration" element={<Registration />} />
+      <Route path="/search" element={<Search />} />
 
       <Route path="/profile" element={<ProfilePage />} loader={requireAuth} />
       <Route path="/categories" element={<Categories />} loader={requireAuth} />
