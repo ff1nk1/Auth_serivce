@@ -386,3 +386,9 @@
     color: #991b1b;
     border: 1px solid #fecaca;
 }
+
+.alert-banner.alert-pending {
+    background-color: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}

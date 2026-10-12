@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Integration suite: real OpenSearch + Kafka::fake() for search.performed.
+
+  Prerequisites:
+    docker compose up -d search_opensearch
+    (optional) docker compose up -d search_app
+
+  Run inside the app container:
+    docker compose exec search_app php artisan test -c phpunit.integration.xml
+
+  Or from host (OpenSearch published on :9200):
+    php artisan test -c phpunit.integration.xml
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="KAFKA_CACHE_DRIVER" value="array"/>
+        <env name="KAFKA_BROKERS" value="kafka:29092"/>
+        <env name="OPENSEARCH_HOSTS" value="http://search_opensearch:9200"/>
+        <env name="OPENSEARCH_PRODUCTS_INDEX" value="products_test"/>
+        <env name="OPENSEARCH_CATEGORIES_INDEX" value="categories_test"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>

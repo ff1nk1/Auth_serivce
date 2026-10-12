@@ -3,13 +3,13 @@ import {
   RouterProvider,
   Route,
   createRoutesFromElements,
+  Navigate,
+  useParams,
 } from 'react-router-dom'
 
 import Login from './Pages/Login'
 import Registration from './Pages/Registration'
 import ProfilePage from './Pages/ProfilePage'
-import Notifications from './Pages/Notifications'
-import NotificationDetail from './Pages/NotificationDetail'
 import Categories from './Pages/Categories'
 import CategoryProducts from './Pages/CategoryProducts'
 import Stores from './Pages/Stores'
@@ -20,8 +20,21 @@ import OrderDetail from './Pages/OrderDetail'
 import Cart from './Pages/Cart'
 import Search from './Pages/Search'
 
+import AdminLayout from './admin/AdminLayout'
+import AdminHub from './admin/AdminHub'
+import AdminUsers from './admin/AdminUsers'
+import AdminOrders from './admin/AdminOrders'
+import AdminNotifications from './admin/AdminNotifications'
+import AdminNotificationDetail from './admin/AdminNotificationDetail'
+
 import RootErrorBoundary from './RootErrorBoundary'
-import { notificationsLoader, notificationDetailLoader } from './notifications/loaders'
+import {
+  adminLayoutLoader,
+  adminUsersLoader,
+  adminOrdersLoader,
+  adminNotificationsLoader,
+  adminNotificationDetailLoader,
+} from './admin/loaders'
 import { ordersLoader, orderDetailLoader } from './orders/loaders'
 import { requireAuth } from './auth/requireAuth'
 
@@ -43,11 +56,28 @@ const router = createBrowserRouter(
       <Route path="/orders" element={<Orders />} loader={ordersLoader} />
       <Route path="/orders/:id" element={<OrderDetail />} loader={orderDetailLoader} />
 
-      <Route path="/notifications" element={<Notifications />} loader={notificationsLoader} />
-      <Route path="/notifications/:id" element={<NotificationDetail />} loader={notificationDetailLoader} />
+      <Route path="/admin" element={<AdminLayout />} loader={adminLayoutLoader}>
+        <Route index element={<AdminHub />} />
+        <Route path="users" element={<AdminUsers />} loader={adminUsersLoader} />
+        <Route path="orders" element={<AdminOrders />} loader={adminOrdersLoader} />
+        <Route path="notifications" element={<AdminNotifications />} loader={adminNotificationsLoader} />
+        <Route
+          path="notifications/:id"
+          element={<AdminNotificationDetail />}
+          loader={adminNotificationDetailLoader}
+        />
+      </Route>
+
+      <Route path="/notifications" element={<Navigate to="/admin/notifications" replace />} />
+      <Route path="/notifications/:id" element={<RedirectNotificationDetail />} />
     </Route>
   )
 )
+
+function RedirectNotificationDetail() {
+  const { id } = useParams()
+  return <Navigate to={`/admin/notifications/${id}`} replace />
+}
 
 export default function App() {
   return <RouterProvider router={router} />

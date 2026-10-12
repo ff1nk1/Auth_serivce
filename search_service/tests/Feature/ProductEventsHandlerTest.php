@@ -155,6 +155,40 @@ class ProductEventsHandlerTest extends TestCase
         $this->app->make(ProductEventsHandler::class)($message);
     }
 
+    public function test_unknown_event_type_is_ignored(): void
+    {
+        $client = Mockery::mock(Client::class);
+        $client->shouldNotReceive('index');
+        $client->shouldNotReceive('delete');
+        $this->app->instance(Client::class, $client);
+
+        $message = $this->consumerMessage('product.archived', [
+            'event' => 'product.archived',
+            'data' => ['id' => 1, 'name' => 'X', 'store_id' => 1],
+        ]);
+
+        $this->app->make(ProductEventsHandler::class)($message);
+    }
+
+    public function test_missing_data_or_id_is_skipped(): void
+    {
+        $client = Mockery::mock(Client::class);
+        $client->shouldNotReceive('index');
+        $client->shouldNotReceive('delete');
+        $this->app->instance(Client::class, $client);
+
+        $this->app->make(ProductEventsHandler::class)(
+            $this->consumerMessage('product.created', ['event' => 'product.created'])
+        );
+
+        $this->app->make(ProductEventsHandler::class)(
+            $this->consumerMessage('product.deleted', [
+                'event' => 'product.deleted',
+                'data' => ['name' => 'No id'],
+            ])
+        );
+    }
+
     public function test_command_is_registered(): void
     {
         $this->artisan('list', ['namespace' => 'kafka'])

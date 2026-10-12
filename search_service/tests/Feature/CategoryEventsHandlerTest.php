@@ -97,6 +97,52 @@ class CategoryEventsHandlerTest extends TestCase
         $this->app->make(CategoryEventsHandler::class)($message);
     }
 
+    public function test_unknown_event_type_is_ignored(): void
+    {
+        $client = Mockery::mock(Client::class);
+        $client->shouldNotReceive('index');
+        $client->shouldNotReceive('delete');
+        $client->shouldNotReceive('updateByQuery');
+        $this->app->instance(Client::class, $client);
+
+        $message = $this->consumerMessage('category.moved', [
+            'event' => 'category.moved',
+            'data' => ['id' => 1, 'name' => 'X'],
+        ]);
+
+        $this->app->make(CategoryEventsHandler::class)($message);
+    }
+
+    public function test_category_updated_without_name_is_skipped(): void
+    {
+        $client = Mockery::mock(Client::class);
+        $client->shouldNotReceive('index');
+        $client->shouldNotReceive('updateByQuery');
+        $this->app->instance(Client::class, $client);
+
+        $message = $this->consumerMessage('category.updated', [
+            'event' => 'category.updated',
+            'data' => [
+                'id' => 3,
+                'slug' => 'gadgets',
+            ],
+        ]);
+
+        $this->app->make(CategoryEventsHandler::class)($message);
+    }
+
+    public function test_missing_data_is_skipped(): void
+    {
+        $client = Mockery::mock(Client::class);
+        $client->shouldNotReceive('index');
+        $client->shouldNotReceive('delete');
+        $this->app->instance(Client::class, $client);
+
+        $this->app->make(CategoryEventsHandler::class)(
+            $this->consumerMessage('category.created', ['event' => 'category.created'])
+        );
+    }
+
     public function test_command_is_registered(): void
     {
         $this->artisan('list', ['namespace' => 'kafka'])

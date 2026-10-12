@@ -16,13 +16,13 @@ use Illuminate\Support\Facades\Mail;
 
 class NotificationService
 {
-
     public const MAX_RETRIES = 3;         // Максимальное кол-во попыток
+
     public const INITIAL_BACKOFF_SEC = 1;  // Базовая задержка в секундах
+
     /**
      * Формирование фильтрованного запроса и получение пагинированных данных
      */
-    
     public function getFilteredNotifications(NotificationsRequest $request, int $perPage = 20): LengthAwarePaginator
     {
         $query = EmailLog::query();
@@ -36,7 +36,6 @@ class NotificationService
         $query->when($request->filled('email'), function ($q) use ($request) {
             $q->where('email', $request->email);
         });
-
 
         // 4. Фильтр по дате "От"
         $query->when($request->filled('date_from'), function ($q) use ($request) {
@@ -54,6 +53,9 @@ class NotificationService
         return $query->orderBy('created_at', 'desc')->paginate($perPage);
     }
 
+    /**
+     * Admin resend: same retry/backoff path as primary Kafka delivery, on the existing EmailLog.
+     */
     public function send_email(EmailLog $notification): bool
     {
         $eventType = $this->resolveEventTypeForResend($notification);
@@ -71,27 +73,29 @@ class NotificationService
             $payload['name'] = $notification->name;
         }
 
-        try {
-            Mail::to($email)->send(
-                $this->mailableForEventType($eventType, $payload)
-            );
+        $notification->update([
+            'status' => 'pending',
+            'error_message' => null,
+            'moved_to_dlq' => false,
+            'retries' => 0,
+            'event_type' => $eventType,
+            'payload' => $payload,
+        ]);
 
+        $result = $this->attemptSendWithRetry(
+            $notification,
+            $email,
+            fn () => $this->mailableForEventType($eventType, $payload),
+        );
+
+        if (! $result['isSent']) {
             $notification->update([
-                'status'        => 'sent',
-                'error_message' => null,
-                'time'          => time(),
-                'event_type'    => $eventType,
+                'status' => 'failed',
+                'error_message' => 'Ошибка отправки из админки: '.$result['lastError'],
             ]);
-
-            return true;
-        } catch (\Exception $e) {
-            $notification->update([
-                'status'        => 'failed',
-                'error_message' => 'Ошибка отправки из админки: '.$e->getMessage(),
-            ]);
-
-            return false;
         }
+
+        return $result['isSent'];
     }
 
     /**
@@ -168,15 +172,32 @@ class NotificationService
         }
 
         $emailLog = EmailLog::create([
-            'name'         => $body['name'] ?? null,
-            'email'        => $emailAddress,
-            'status'       => 'pending',
-            'retries'      => 0,
+            'name' => $body['name'] ?? null,
+            'email' => $emailAddress,
+            'status' => 'pending',
+            'retries' => 0,
             'moved_to_dlq' => false,
-            'payload'      => $payload,
-            'event_type'   => $eventType,
+            'payload' => $payload,
+            'event_type' => $eventType,
         ]);
 
+        $result = $this->attemptSendWithRetry($emailLog, $emailAddress, $mailableFactory);
+
+        return [
+            'isSent' => $result['isSent'],
+            'emailLog' => $emailLog,
+            'lastError' => $result['lastError'],
+        ];
+    }
+
+    /**
+     * Shared SMTP send loop with exponential backoff (primary Kafka path + admin resend).
+     *
+     * @param  callable(): Mailable  $mailableFactory
+     * @return array{isSent: bool, lastError: string}
+     */
+    protected function attemptSendWithRetry(EmailLog $emailLog, string $emailAddress, callable $mailableFactory): array
+    {
         $attempt = 0;
         $isSent = false;
         $lastError = '';
@@ -188,11 +209,11 @@ class NotificationService
                 Mail::to($emailAddress)->send($mailableFactory());
 
                 $emailLog->update([
-                    'status'        => 'sent',
-                    'retries'       => $attempt,
-                    'moved_to_dlq'  => false,
+                    'status' => 'sent',
+                    'retries' => $attempt,
+                    'moved_to_dlq' => false,
                     'error_message' => null,
-                    'time'          => time(),
+                    'time' => time(),
                 ]);
 
                 $isSent = true;
@@ -215,8 +236,7 @@ class NotificationService
         }
 
         return [
-            'isSent'    => $isSent,
-            'emailLog'  => $emailLog,
+            'isSent' => $isSent,
             'lastError' => $lastError,
         ];
     }
@@ -226,7 +246,11 @@ class NotificationService
      */
     protected function sleepInTest(int $seconds): void
     {
+        // Skip real sleep under PHPUnit (Docker may keep APP_ENV=local over phpunit.xml).
+        if (defined('PHPUNIT_COMPOSER_INSTALL') || defined('__PHPUNIT_PHAR__') || app()->runningUnitTests()) {
+            return;
+        }
+
         sleep($seconds);
     }
-
 }

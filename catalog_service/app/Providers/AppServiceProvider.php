@@ -58,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         // Keep Livewire JS on the same /admin-catalog prefix so Traefik → auth → catalog,
-        // instead of PathPrefix(/livewire*) hitting admin_frontend.
+        // instead of a broad PathPrefix(/livewire*) catch-all.
         Livewire::setScriptRoute(function ($handle) {
             $path = config('app.debug')
                 ? '/admin-catalog/livewire/livewire.js'

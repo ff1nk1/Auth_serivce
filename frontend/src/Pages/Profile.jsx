@@ -117,6 +117,9 @@ export default function Profile({ user }) {
           <CartNavLink className="badge" />
           <Link to="/categories" className="badge">Каталог →</Link>
           <Link to="/search" className="badge">Поиск →</Link>
+          {(user.role?.slug === 'admin' || user.role?.slug === 'analyst') && (
+            <Link to="/admin" className="badge">Админка →</Link>
+          )}
         </div>
 
         {/* Статусное сообщение об успехе или ошибке */}

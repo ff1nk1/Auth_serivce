@@ -154,13 +154,15 @@ class NotificationsApiTest extends TestCase
 
     public function test_resend_returns_400_when_smtp_fails(): void
     {
+        $maxRetries = \App\Services\NotificationService::MAX_RETRIES;
+
         $pendingMailMock = Mockery::mock(PendingMail::class);
         $pendingMailMock->shouldReceive('send')
-            ->once()
+            ->times($maxRetries)
             ->andThrow(new \Exception('SMTP Connection Rejected'));
 
         Mail::shouldReceive('to')
-            ->once()
+            ->times($maxRetries)
             ->andReturn($pendingMailMock);
 
         $log = EmailLog::factory()->failed()->create([
@@ -179,5 +181,7 @@ class NotificationsApiTest extends TestCase
             ->assertJsonFragment([
                 'message' => 'Ошибка отправки из админки: SMTP Connection Rejected',
             ]);
+
+        $this->assertEquals($maxRetries, $log->fresh()->retries);
     }
 }

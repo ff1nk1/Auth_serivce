@@ -64,14 +64,16 @@ class EmailLogMongoIntegrationTest extends TestCase
      */
     public function test_it_updates_status_to_failed_and_stores_error_message_in_mongodb()
     {
-        // Симулируем сбой отправки
+        $maxRetries = NotificationService::MAX_RETRIES;
+
+        // Симулируем сбой отправки на всех попытках (та же retry-логика, что при первичной отправке)
         $pendingMailMock = Mockery::mock(PendingMail::class);
         $pendingMailMock->shouldReceive('send')
-            ->once()
+            ->times($maxRetries)
             ->andThrow(new \Exception('SMTP Connection Rejected'));
 
         Mail::shouldReceive('to')
-            ->once()
+            ->times($maxRetries)
             ->with('fail_user@example.com')
             ->andReturn($pendingMailMock);
 

@@ -48,19 +48,18 @@ class NotificationTest extends TestCase
 
     public function test_send_email_failure_handles_exception()
     {
+        $maxRetries = NotificationService::MAX_RETRIES;
+
         $pendingMailMock = Mockery::mock(PendingMail::class);
-        
         $pendingMailMock->shouldReceive('send')
-            ->once()
+            ->times($maxRetries)
             ->andThrow(new \Exception('SMTP connection timeout'));
 
-        //Мокаем сам фасад Mail, чтобы метод to() вернул наш $pendingMailMock
         Mail::shouldReceive('to')
-            ->once()
+            ->times($maxRetries)
             ->with('test@example.com')
             ->andReturn($pendingMailMock);
 
-        // 1. ИСПОЛЬЗУЕМ ВАШУ НОВУЮ ФАБРИКУ ВМЕСТО MOCKERY
         $notification = EmailLog::factory()->create([
             'email' => 'test@example.com',
             'name'  => 'John Doe',
@@ -72,10 +71,51 @@ class NotificationTest extends TestCase
 
         $this->assertFalse($result);
 
-        // 2. ПРОВЕРЯЕМ, ЧТО В БАЗЕ СТАТУС ИЗМЕНИЛСЯ НА FAILED
         $notification->refresh();
         $this->assertEquals('failed', $notification->status);
+        $this->assertEquals($maxRetries, $notification->retries);
         $this->assertEquals('Ошибка отправки из админки: SMTP connection timeout', $notification->error_message);
+    }
+
+    public function test_send_email_retries_then_succeeds()
+    {
+        $pendingMailMock = Mockery::mock(PendingMail::class);
+        $callCount = 0;
+        $pendingMailMock->shouldReceive('send')
+            ->twice()
+            ->andReturnUsing(function () use (&$callCount) {
+                $callCount++;
+                if ($callCount === 1) {
+                    throw new \Exception('SMTP timeout');
+                }
+
+                return true;
+            });
+
+        Mail::shouldReceive('to')
+            ->twice()
+            ->with('retry@example.com')
+            ->andReturn($pendingMailMock);
+
+        $notification = EmailLog::factory()->failed()->create([
+            'email' => 'retry@example.com',
+            'name' => 'Retry',
+            'event_type' => 'user.registered',
+            'payload' => [
+                'email' => 'retry@example.com',
+                'name' => 'Retry',
+                'event_type' => 'user.registered',
+            ],
+        ]);
+
+        $service = new NotificationService();
+        $result = $service->send_email($notification);
+
+        $this->assertTrue($result);
+        $notification->refresh();
+        $this->assertEquals('sent', $notification->status);
+        $this->assertEquals(2, $notification->retries);
+        $this->assertNull($notification->error_message);
     }
 
     public function test_welcome_mail_has_correct_data_and_subject()

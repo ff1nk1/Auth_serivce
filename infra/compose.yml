@@ -3,7 +3,8 @@
 # or from repo root:
 #   docker compose build php-base
 #
-# Edge (Traefik): frontend + admin_frontend + catalog admin (/admin-catalog via auth_service).
+# Edge (Traefik): frontend + catalog admin (/admin-catalog via auth_service).
+# React admin UI is served by frontend at /admin/*.
 # Other auth_service API traffic still goes via frontend nginx /api proxy.
 
 services:
