@@ -1,5 +1,5 @@
 # File provider — avoids Docker API version mismatch with modern Docker Engine.
-# Only frontend + admin are exposed. auth_service is NOT routed here.
+# frontend + admin_frontend + catalog admin (via auth_service HTML proxy).
 
 tls:
   certificates:
@@ -23,8 +23,26 @@ http:
       service: frontend
       priority: 1
 
+    admin-catalog:
+      rule: Host(`app.localhost`) && PathPrefix(`/admin-catalog`)
+      entryPoints:
+        - websecure
+      service: auth
+      tls: {}
+      priority: 110
+
+    # Livewire 4 hashed asset/module prefix for catalog_service (from its APP_KEY).
+    # Direct to catalog — public JS modules, no JWT. Avoids admin_frontend catch-all.
+    catalog-livewire:
+      rule: Host(`app.localhost`) && PathPrefix(`/livewire-5e33d2ff`)
+      entryPoints:
+        - websecure
+      service: catalog
+      tls: {}
+      priority: 120
+
     admin:
-      rule: Host(`app.localhost`) && (PathPrefix(`/admin`) || PathPrefix(`/livewire`) || PathPrefix(`/css/filament`) || PathPrefix(`/js/filament`) || PathPrefix(`/fonts/filament`))
+      rule: Host(`app.localhost`) && (PathPrefix(`/admin`) || PathPrefix(`/livewire-6eaa4dee`) || PathPrefix(`/css/filament`) || PathPrefix(`/js/filament`) || PathPrefix(`/fonts/filament`))
       entryPoints:
         - websecure
       service: admin
@@ -49,3 +67,13 @@ http:
       loadBalancer:
         servers:
           - url: http://admin_frontend:8000
+
+    auth:
+      loadBalancer:
+        servers:
+          - url: http://auth_service_app:8001
+
+    catalog:
+      loadBalancer:
+        servers:
+          - url: http://catalog_service_app:8002

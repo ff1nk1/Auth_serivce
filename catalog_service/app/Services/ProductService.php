@@ -65,7 +65,7 @@ class ProductService
                 ->withKafkaKey((string) $product->id)
                 ->withHeaders([
                     'event-type' => $topic,
-                    'source'     => 'catalog-service', // Укажите имя вашего сервиса
+                    'source'     => 'catalog-service', 
                 ])
                 ->withBody([
                     'event'     => $topic,

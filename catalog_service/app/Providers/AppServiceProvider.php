@@ -2,23 +2,101 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\AuthenticateFromGatewayHeaders;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Features\SupportFileUploads\FilePreviewController;
+use Livewire\Features\SupportFileUploads\FileUploadController;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        //
+        Auth::viaRequest('gateway-headers', function (Request $request): ?User {
+            $userId = $request->header('X-User-Id');
+            $role = $request->header('X-User-Role');
+
+            if (! is_numeric($userId) || (int) $userId < 1 || $role !== 'admin') {
+                return null;
+            }
+
+            return User::fromGatewayHeaders(
+                (int) $userId,
+                (string) $role,
+                $request->header('X-User-Name'),
+                $request->header('X-User-Email'),
+            );
+        });
+
+        // MinIO AWS_ENDPOINT is Docker-internal HTTP — browser S3 direct uploads cause
+        // Mixed Content / unreachable host. Keep Livewire temps on local disk; permanent
+        // product images still go to S3 in ProductResource::uploadImage().
+        config([
+            'livewire.temporary_file_upload.disk' => env('LIVEWIRE_TEMPORARY_FILE_UPLOAD_DISK', 'local'),
+        ]);
+
+        // Livewire signed upload URLs are built during proxied requests. Without forcing
+        // APP_URL, UrlGenerator may emit http://app.localhost/...; Traefik then 301s to
+        // HTTPS and the browser retries as GET → MethodNotAllowed on upload-file.
+        $appUrl = rtrim((string) config('app.url'), '/');
+        if ($appUrl !== '') {
+            URL::forceRootUrl($appUrl);
+            $scheme = parse_url($appUrl, PHP_URL_SCHEME);
+            if (is_string($scheme) && $scheme !== '') {
+                URL::forceScheme($scheme);
+            }
+        }
+
+        // Keep Livewire JS on the same /admin-catalog prefix so Traefik → auth → catalog,
+        // instead of PathPrefix(/livewire*) hitting admin_frontend.
+        Livewire::setScriptRoute(function ($handle) {
+            $path = config('app.debug')
+                ? '/admin-catalog/livewire/livewire.js'
+                : '/admin-catalog/livewire/livewire.min.js';
+
+            return Route::get($path, $handle);
+        });
+
+        Livewire::setUpdateRoute(function ($handle) {
+            return Route::post('/admin-catalog/livewire/update', $handle)
+                ->middleware(['web', AuthenticateFromGatewayHeaders::class]);
+        });
+
+        $this->app->booted(function () {
+            Route::post('/admin-catalog/livewire/upload-file', [FileUploadController::class, 'handle'])
+                ->middleware(['web', AuthenticateFromGatewayHeaders::class])
+                ->name('livewire.upload-file');
+
+            Route::get('/admin-catalog/livewire/preview-file/{filename}', [FilePreviewController::class, 'handle'])
+                ->middleware(['web', AuthenticateFromGatewayHeaders::class])
+                ->name('livewire.preview-file');
+
+            $this->app->booted(function () {
+                $routes = Route::getRoutes();
+                $upload = collect($routes->getRoutes())
+                    ->first(fn ($route) => $route->uri() === 'admin-catalog/livewire/upload-file');
+                $preview = collect($routes->getRoutes())
+                    ->first(fn ($route) => $route->uri() === 'admin-catalog/livewire/preview-file/{filename}');
+
+                (function () use ($upload, $preview) {
+                    if ($upload) {
+                        $this->nameList['livewire.upload-file'] = $upload;
+                    }
+                    if ($preview) {
+                        $this->nameList['livewire.preview-file'] = $preview;
+                    }
+                })->call($routes);
+            });
+        });
     }
 }

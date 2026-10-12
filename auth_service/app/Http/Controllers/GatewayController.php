@@ -30,6 +30,24 @@ class GatewayController extends Controller
         );
     }
 
+    public function catalogAdminPanel(Request $request, string $path = ''): Response
+    {
+        $user = $request->user();
+        $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
+
+        return $this->proxy->forwardHtml(
+            $request,
+            (string) config('services.catalog.url'),
+            '/admin-catalog'.$suffix,
+            [
+                'id' => (int) $user->id,
+                'role' => (string) ($user->role?->slug ?? ''),
+                'name' => (string) ($user->name ?? ''),
+                'email' => (string) ($user->email ?? ''),
+            ]
+        );
+    }
+
     public function uploadUrl(Request $request): Response
     {
         return $this->proxy->forward(

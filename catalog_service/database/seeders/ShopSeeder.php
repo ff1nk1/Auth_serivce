@@ -89,8 +89,7 @@ class ShopSeeder extends Seeder
             foreach ($categories as $catData) {
                 $category = Category::create([
                     'name' => $catData['name'],
-                    // Генерируем slug и добавляем random на случай совпадения имен
-                    'slug' => Str::slug($catData['name']) . '-' . rand(10, 99),
+                    'slug' => Str::slug($catData['name']),
                     'parent_id' => $parentId,
                 ]);
 

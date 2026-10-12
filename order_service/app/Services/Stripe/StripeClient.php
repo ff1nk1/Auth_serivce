@@ -6,7 +6,7 @@ use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 use UnexpectedValueException;
-
+//stripe listen --forward-to https://app.localhost/api/webhooks/stripe --skip-verify
 /**
  * Thin Stripe API client (secret-key auth). Prefer this over shipping JWT to Stripe.
  * Uses stripe/stripe-php for webhook verification when installed; falls back to HMAC.

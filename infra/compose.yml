@@ -3,8 +3,8 @@
 # or from repo root:
 #   docker compose build php-base
 #
-# Edge (Traefik): only frontend + admin_frontend are routed.
-# auth_service is NOT exposed via Traefik — only via frontend nginx /api proxy.
+# Edge (Traefik): frontend + admin_frontend + catalog admin (/admin-catalog via auth_service).
+# Other auth_service API traffic still goes via frontend nginx /api proxy.
 
 services:
   # Shared base image for Laravel services (additional_contexts service:php-base).
