@@ -137,5 +137,21 @@ services:
     networks:
       - php_project_net
 
+  # Load testing — run manually:
+  #   docker compose --profile loadtest run --rm search_k6 run /scripts/search-load.js
+  search_k6:
+    image: grafana/k6:1.0.0
+    container_name: search_service_k6
+    profiles:
+      - loadtest
+    volumes:
+      - ./k6:/scripts:ro
+    environment:
+      BASE_URL: http://search_service_app:8005
+    depends_on:
+      - search_app
+    networks:
+      - php_project_net
+
 volumes:
   search_osdata:
