@@ -14,13 +14,23 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// EventStore is the ClickHouse write/lookup surface used by Kafka handlers.
+type EventStore interface {
+	InsertUserRegistration(ctx context.Context, row store.UserRegistration) error
+	InsertOrderFunnelEvent(ctx context.Context, row store.OrderFunnelEvent) error
+	InsertOrderLineItems(ctx context.Context, rows []store.OrderLineItem) error
+	InsertProductDim(ctx context.Context, row store.ProductDim) error
+	LookupProductDim(ctx context.Context, productID uint64) (store.ProductDim, bool, error)
+	InsertSearchQuery(ctx context.Context, row store.SearchQuery) error
+}
+
 type Consumers struct {
 	brokers []string
-	store   *store.Store
+	store   EventStore
 	log     *slog.Logger
 }
 
-func NewConsumers(brokers []string, st *store.Store, log *slog.Logger) *Consumers {
+func NewConsumers(brokers []string, st EventStore, log *slog.Logger) *Consumers {
 	if log == nil {
 		log = slog.Default()
 	}

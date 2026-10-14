@@ -1,0 +1,8 @@
+# Overlay for host-side Go tests (native ClickHouse protocol).
+# Host port 9000 is used by MinIO in the main stack.
+# From repo root:
+#   docker compose -f compose.yml -f analytic_service/compose.test.yml up -d analytic_clickhouse
+services:
+  analytic_clickhouse:
+    ports:
+      - "19000:9000"

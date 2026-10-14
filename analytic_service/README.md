@@ -56,6 +56,23 @@ From repo root:
 docker compose up -d --build analytic_clickhouse analytic_api analytic_consumers
 ```
 
+## Tests
+
+Unit tests (helpers / handlers / HTTP parsing / `formatMoney`) always run. Store aggregation tests need ClickHouse native protocol on the host (default `localhost:19000`).
+
+```bash
+# from repo root — expose native CH port 19000 (host 9000 is MinIO)
+docker compose -f compose.yml -f analytic_service/compose.test.yml up -d analytic_clickhouse
+
+cd analytic_service
+go test ./...
+
+# Kafka + ClickHouse integration (needs kafka on localhost:9092)
+go test -tags=integration ./internal/kafka/...
+```
+
+Env overrides: `CLICKHOUSE_ADDR`, `CLICKHOUSE_DATABASE` (default `analytics_test`), `KAFKA_BROKERS`, `MIGRATIONS_DIR`.
+
 ## Development build
 
 ```bash
