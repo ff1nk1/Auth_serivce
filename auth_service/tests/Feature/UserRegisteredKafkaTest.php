@@ -8,7 +8,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Facades\Kafka;
-use Junges\Kafka\Message\Message;
 use Tests\TestCase;
 
 class UserRegisteredKafkaTest extends TestCase
@@ -46,21 +45,20 @@ class UserRegisteredKafkaTest extends TestCase
 
         $this->assertTrue(Hash::check('secret123', $user->password));
 
-        $expectedMessage = new Message(
-            headers: [
-                'event-type' => 'user.registered',
-                'source' => 'auth-service',
-            ],
-            body: [
-                'user_id' => $user->id,
-                'email' => 'john@example.com',
-                'name' => 'John Doe',
-                'event_type' => 'user.registered',
-            ],
-            key: (string) $user->id
-        );
+        Kafka::assertPublishedOn('user.events', null, function ($message) use ($user) {
+            $headers = $message->getHeaders();
+            $body = $message->getBody();
 
-        Kafka::assertPublishedOn('user.events', $expectedMessage);
+            return ($headers['event-type'] ?? null) === 'user.registered'
+                && ($headers['source'] ?? null) === 'auth-service'
+                && $message->getKey() === (string) $user->id
+                && ($body['user_id'] ?? null) === $user->id
+                && ($body['email'] ?? null) === 'john@example.com'
+                && ($body['name'] ?? null) === 'John Doe'
+                && ($body['event_type'] ?? null) === 'user.registered'
+                && is_string($body['registered_at'] ?? null)
+                && $body['registered_at'] !== '';
+        });
     }
 
     public function test_it_registers_user_even_if_kafka_fails(): void

@@ -39,6 +39,23 @@ export default function AdminLayout() {
           <NavLink to="/admin/notifications" className={({ isActive }) => (isActive ? 'admin-nav-link active' : 'admin-nav-link')}>
             Уведомления
           </NavLink>
+          <NavLink to="/admin/analytics/users" className={({ isActive }) => (isActive ? 'admin-nav-link active' : 'admin-nav-link')}>
+            Пользователи (аналитика)
+          </NavLink>
+          <NavLink to="/admin/analytics/orders" className={({ isActive }) => (isActive ? 'admin-nav-link active' : 'admin-nav-link')}>
+            Заказы (аналитика)
+          </NavLink>
+          <NavLink to="/admin/analytics/search" className={({ isActive }) => (isActive ? 'admin-nav-link active' : 'admin-nav-link')}>
+            Поиск (аналитика)
+          </NavLink>
+          <a
+            href="http://localhost:8123/play"
+            target="_blank"
+            rel="noreferrer"
+            className="admin-nav-link"
+          >
+            ClickHouse Play
+          </a>
         </nav>
 
         <Outlet context={{ user }} />

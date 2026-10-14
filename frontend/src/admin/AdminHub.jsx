@@ -28,6 +28,35 @@ export default function AdminHub() {
             <span>Email-сообщения из MongoDB</span>
           </Link>
         </li>
+        <li>
+          <Link to="/admin/analytics/users" className="admin-hub-link">
+            <strong>Аналитика: пользователи</strong>
+            <span>Рост базы пользователей во времени</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/admin/analytics/orders" className="admin-hub-link">
+            <strong>Аналитика: заказы</strong>
+            <span>Воронка, конверсия и выручка</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/admin/analytics/search" className="admin-hub-link">
+            <strong>Аналитика: поиск</strong>
+            <span>Популярные и пустые запросы</span>
+          </Link>
+        </li>
+        <li>
+          <a
+            href="http://localhost:8123/play"
+            target="_blank"
+            rel="noreferrer"
+            className="admin-hub-link"
+          >
+            <strong>ClickHouse Play</strong>
+            <span>Встроенный SQL UI ClickHouse (localhost:8123/play)</span>
+          </a>
+        </li>
         {isAdmin && (
           <li>
             <a href="/admin-catalog" className="admin-hub-link">

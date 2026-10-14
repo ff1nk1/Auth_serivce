@@ -104,4 +104,14 @@ class SearchProductsRequest extends FormRequest
             'sort' => $sort,
         ];
     }
+
+    /**
+     * Loadtest / synthetic traffic: still hits Kafka, but analytic_service skips ClickHouse.
+     */
+    public function shouldSkipAnalytics(): bool
+    {
+        $raw = strtolower(trim((string) $this->header('X-Skip-Analytics', '')));
+
+        return in_array($raw, ['1', 'true', 'yes'], true);
+    }
 }

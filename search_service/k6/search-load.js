@@ -2,7 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.1.0/index.js';
 import { pickQuery } from './queries.js';
-
+//docker compose --profile loadtest run --rm search_k6 run /scripts/search-load.js
 const BASE_URL = __ENV.BASE_URL || 'http://search_service_app:8005';
 const TARGET_VUS = Number(__ENV.VUS || 50);
 const HOLD = __ENV.DURATION || '1m';
@@ -23,8 +23,10 @@ export const options = {
 
 export default function () {
   const params = pickQuery(__ITER);
+  // Still publishes search.performed to Kafka (realistic latency); analytic skips ClickHouse.
   const res = http.get(`${BASE_URL}/api/search`, {
     params,
+    headers: { 'X-Skip-Analytics': '1' },
     tags: { name: 'search' },
   });
 

@@ -8,6 +8,7 @@ export const authApi = api
 export const catalogApi = api
 export const notificationApi = api
 export const orderApi = api
+export const analyticApi = api
 
 let isRefreshing = false
 let failedQueue = []

@@ -26,6 +26,9 @@ import AdminUsers from './admin/AdminUsers'
 import AdminOrders from './admin/AdminOrders'
 import AdminNotifications from './admin/AdminNotifications'
 import AdminNotificationDetail from './admin/AdminNotificationDetail'
+import AdminAnalyticsUsers from './admin/AdminAnalyticsUsers'
+import AdminAnalyticsOrders from './admin/AdminAnalyticsOrders'
+import AdminAnalyticsSearch from './admin/AdminAnalyticsSearch'
 
 import AppLayout, { appLayoutLoader } from './layouts/AppLayout'
 import RootErrorBoundary from './RootErrorBoundary'
@@ -35,6 +38,9 @@ import {
   adminOrdersLoader,
   adminNotificationsLoader,
   adminNotificationDetailLoader,
+  adminAnalyticsUsersLoader,
+  adminAnalyticsOrdersLoader,
+  adminAnalyticsSearchLoader,
 } from './admin/loaders'
 import { ordersLoader, orderDetailLoader } from './orders/loaders'
 import { requireAuth } from './auth/requireAuth'
@@ -67,6 +73,21 @@ const router = createBrowserRouter(
           path="notifications/:id"
           element={<AdminNotificationDetail />}
           loader={adminNotificationDetailLoader}
+        />
+        <Route
+          path="analytics/users"
+          element={<AdminAnalyticsUsers />}
+          loader={adminAnalyticsUsersLoader}
+        />
+        <Route
+          path="analytics/orders"
+          element={<AdminAnalyticsOrders />}
+          loader={adminAnalyticsOrdersLoader}
+        />
+        <Route
+          path="analytics/search"
+          element={<AdminAnalyticsSearch />}
+          loader={adminAnalyticsSearchLoader}
         />
       </Route>
 

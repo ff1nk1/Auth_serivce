@@ -166,6 +166,38 @@ class OrderService
         return $order;
     }
 
+    public function shipForAdmin(int $orderId): Order
+    {
+        return DB::transaction(function () use ($orderId) {
+            $order = Order::query()
+                ->with(['items.productSnapshot', 'payments'])
+                ->where('id', $orderId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($order === null) {
+                throw new NotFoundHttpException('Order not found.');
+            }
+
+            if ($order->status !== 'confirmed') {
+                throw ValidationException::withMessages([
+                    'status' => ['Order can only be shipped from status confirmed, current: '.$order->status],
+                ]);
+            }
+
+            $order->status = 'shipped';
+            $order->save();
+
+            $this->outbox->write(
+                'order.events',
+                'order.shipped',
+                $this->notificationPayload($order)
+            );
+
+            return $order->load(['items.productSnapshot', 'payments']);
+        });
+    }
+
     public function serializeOrder(Order $order): array
     {
         $order->loadMissing(['items.productSnapshot', 'payments']);
@@ -189,6 +221,7 @@ class OrderService
             'status' => $order->status,
             'total_amount' => (string) $order->total_amount,
             'items' => $this->notificationItems($order),
+            'occurred_at' => now()->toIso8601String(),
         ];
 
         if (is_string($order->saga_id) && $order->saga_id !== '') {
@@ -306,6 +339,9 @@ class OrderService
             $this->outbox->write('order.events', 'order.created', [
                 'saga_id' => $sagaId,
                 'order_id' => $order->id,
+                'user_id' => $userId,
+                'total_amount' => (string) $order->total_amount,
+                'created_at' => $order->created_at->toIso8601String(),
                 'items' => $outboxItems,
             ]);
 

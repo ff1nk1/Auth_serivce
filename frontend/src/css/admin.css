@@ -402,3 +402,134 @@
 .admin-table a:hover {
     text-decoration: underline;
 }
+
+/* Analytics */
+.analytics-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.analytics-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.analytics-preset-btn {
+    padding: 8px 14px;
+    border: 1px solid #e8ecef;
+    border-radius: 8px;
+    background: #fff;
+    color: #29323d;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.analytics-preset-btn:hover:not(:disabled) {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+
+.analytics-preset-btn.is-active {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.analytics-preset-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.analytics-filters-custom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+}
+
+.analytics-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #7b8794;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.analytics-date-input {
+    width: 180px;
+}
+
+.analytics-chart {
+    width: 100%;
+    margin-bottom: 24px;
+    padding: 12px 8px 8px;
+    background: #fff;
+    border: 1px solid #e8ecef;
+    border-radius: 12px;
+}
+
+.analytics-chart-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 160px;
+    color: #7b8794;
+    font-size: 14px;
+}
+
+.analytics-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.analytics-metric-card {
+    padding: 16px;
+    background: #f8fafc;
+    border: 1px solid #e8ecef;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.analytics-metric-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #7b8794;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.analytics-metric-value {
+    font-size: 22px;
+    font-weight: 600;
+    color: #29323d;
+    letter-spacing: -0.3px;
+}
+
+.analytics-section-title {
+    margin: 8px 0 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #29323d;
+}
+
+.analytics-error {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+    font-size: 14px;
+}

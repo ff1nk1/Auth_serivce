@@ -136,6 +136,17 @@ class GatewayController extends Controller
         );
     }
 
+    public function analytics(Request $request, string $path = ''): Response
+    {
+        $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
+
+        return $this->proxy->forward(
+            $request,
+            (string) config('services.analytic.url'),
+            '/analytics'.$suffix
+        );
+    }
+
     public function search(Request $request): Response
     {
         return $this->proxy->forward(

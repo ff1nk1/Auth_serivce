@@ -51,5 +51,9 @@ return [
         'url' => env('SEARCH_SERVICE_URL', 'http://search_service_app:8005'),
     ],
 
+    'analytic' => [
+        'url' => env('ANALYTIC_SERVICE_URL', 'http://analytic_service_api:8006'),
+    ],
+
 ];
 

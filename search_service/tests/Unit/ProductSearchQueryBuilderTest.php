@@ -329,13 +329,43 @@ class ProductSearchQueryBuilderTest extends TestCase
 
             return ($headers['event-type'] ?? null) === 'search.performed'
                 && ($headers['source'] ?? null) === 'search-service'
+                && ! isset($headers['skip-analytics'])
                 && ($body['event'] ?? null) === 'search.performed'
+                && ($body['event_type'] ?? null) === 'search.performed'
+                && ($body['skip_analytics'] ?? null) === false
                 && ($body['data']['query'] ?? null) === 'laptop'
                 && ($body['data']['results_count'] ?? null) === 2
                 && ($body['data']['sort'] ?? null) === 'price_asc'
                 && ($body['data']['filters']['category_ids'] ?? null) === [2]
                 && ($body['data']['filters']['in_stock'] ?? null) === false
                 && ($body['data']['filters']['attributes'] ?? null) === ['Brand' => ['Acme']];
+        });
+    }
+
+    public function test_search_publishes_skip_analytics_when_flagged(): void
+    {
+        $this->mockOpenSearchClient([
+            'hits' => [
+                'total' => ['value' => 0],
+                'hits' => [],
+            ],
+            'aggregations' => $this->emptySearchResponse()['aggregations'],
+        ]);
+        Kafka::fake();
+
+        app(ProductSearchService::class)->search($this->searchParams([
+            'q' => 'loadtest',
+            'sort' => 'relevance',
+        ]), skipAnalytics: true);
+
+        Kafka::assertPublishedOn('search.events', null, function ($message) {
+            $headers = $message->getHeaders();
+            $body = $message->getBody();
+
+            return ($headers['event-type'] ?? null) === 'search.performed'
+                && ($headers['skip-analytics'] ?? null) === 'true'
+                && ($body['skip_analytics'] ?? null) === true
+                && ($body['data']['query'] ?? null) === 'loadtest';
         });
     }
 

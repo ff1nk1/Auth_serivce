@@ -57,6 +57,8 @@ class OrderCancelOutboxTest extends TestCase
         $this->assertSame('cancel@example.com', $cancelled->payload['email']);
         $this->assertSame('user_cancelled', $cancelled->payload['reason']);
         $this->assertSame('order.cancelled', $cancelled->payload['event_type'] ?? null);
+        $this->assertIsString($cancelled->payload['occurred_at'] ?? null);
+        $this->assertNotSame('', $cancelled->payload['occurred_at']);
         $this->assertSame($sagaId, $release->payload['saga_id']);
         $this->assertSame('stock.release_requested', $release->payload['event_type'] ?? null);
         $this->assertArrayHasKey($sagaId.':stock.release_requested', $this->sagaStepStore);

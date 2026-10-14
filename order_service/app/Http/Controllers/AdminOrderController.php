@@ -29,4 +29,11 @@ class AdminOrderController extends Controller
 
         return response()->json($this->orders->serializeOrder($order));
     }
+
+    public function ship(int $id): JsonResponse
+    {
+        $order = $this->orders->shipForAdmin($id);
+
+        return response()->json($this->orders->serializeOrder($order));
+    }
 }

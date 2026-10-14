@@ -1,0 +1,76 @@
+services:
+  analytic_clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: analytic_clickhouse
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      # HTTP only on host — native 9000 stays internal (9000 used by MinIO)
+      - "8123:8123"
+    volumes:
+      - analytic_chdata:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - php_project_net
+
+  analytic_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: analytic_service:local
+    pull_policy: never
+    container_name: analytic_service_api
+    restart: unless-stopped
+    command: ["/app/analytic-api"]
+    expose:
+      - "8006"
+    environment:
+      HTTP_ADDR: ":8006"
+      CLICKHOUSE_ADDR: analytic_clickhouse:9000
+      CLICKHOUSE_DATABASE: analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      MIGRATIONS_DIR: /app/migrations
+    depends_on:
+      analytic_clickhouse:
+        condition: service_healthy
+    networks:
+      - php_project_net
+
+  analytic_consumers:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: analytic_service:local
+    pull_policy: never
+    container_name: analytic_service_consumers
+    restart: unless-stopped
+    command: ["/app/analytic-consumers"]
+    environment:
+      KAFKA_BROKERS: kafka:29092
+      CLICKHOUSE_ADDR: analytic_clickhouse:9000
+      CLICKHOUSE_DATABASE: analytics
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      MIGRATIONS_DIR: /app/migrations
+    depends_on:
+      analytic_clickhouse:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    networks:
+      - php_project_net
+
+volumes:
+  analytic_chdata:

@@ -8,7 +8,9 @@ export default defineConfig({
     port: 5173,
     allowedHosts: ['app.localhost', 'localhost', 'react_frontend'],
     hmr: {
-      clientPort: 80,
+      protocol: 'wss',
+      host: 'app.localhost',
+      clientPort: 443,
     },
   },
 })

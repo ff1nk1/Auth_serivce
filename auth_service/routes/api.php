@@ -34,13 +34,16 @@ Route::middleware(['ensure.token', 'cookie.token', 'auth:api'])->group(function 
     Route::any('/orders/{path?}', [GatewayController::class, 'orders'])
         ->where('path', '.*');
 
-    // Notifications + admin orders — admin + analyst
+    // Notifications + admin orders + analytics — admin + analyst
     Route::middleware('role:admin,analyst')->group(function () {
         Route::any('/notifications/{path?}', [GatewayController::class, 'notifications'])
             ->where('path', '.*');
 
         // Must be registered before admin catalog catch-all
         Route::any('/admin/orders/{path?}', [GatewayController::class, 'ordersAdmin'])
+            ->where('path', '.*');
+
+        Route::any('/analytics/{path?}', [GatewayController::class, 'analytics'])
             ->where('path', '.*');
     });
 

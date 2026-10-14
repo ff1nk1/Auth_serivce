@@ -33,9 +33,10 @@ class ProductSearchService
      *     per_page: int,
      *     sort: string
      * }  $params
+     * @param  bool  $skipAnalytics  When true, still publishes search.performed but marks skip_analytics for consumers.
      * @return array<string, mixed>
      */
-    public function search(array $params): array
+    public function search(array $params, bool $skipAnalytics = false): array
     {
         $this->index->ensureIndices();
 
@@ -117,7 +118,7 @@ class ProductSearchService
             ],
         ];
 
-        $this->publishSearchPerformed($params, $total);
+        $this->publishSearchPerformed($params, $total, $skipAnalytics);
 
         return $result;
     }
@@ -383,9 +384,36 @@ class ProductSearchService
     /**
      * @param  array<string, mixed>  $params
      */
-    private function publishSearchPerformed(array $params, int $resultsCount): void
+    private function publishSearchPerformed(array $params, int $resultsCount, bool $skipAnalytics = false): void
     {
         try {
+            $headers = [
+                'event-type' => 'search.performed',
+                'source' => 'search-service',
+            ];
+            if ($skipAnalytics) {
+                $headers['skip-analytics'] = 'true';
+            }
+
+            $body = [
+                'event' => 'search.performed',
+                'event_type' => 'search.performed',
+                'timestamp' => now()->toIso8601String(),
+                'skip_analytics' => $skipAnalytics,
+                'data' => [
+                    'query' => $params['q'],
+                    'filters' => [
+                        'category_ids' => $params['category_ids'],
+                        'min_price' => $params['min_price'],
+                        'max_price' => $params['max_price'],
+                        'in_stock' => $params['in_stock'],
+                        'attributes' => $params['attributes'],
+                    ],
+                    'results_count' => $resultsCount,
+                    'sort' => $params['sort'],
+                ],
+            ];
+
             Kafka::publish(config('kafka.brokers', 'kafka:29092'))
                 ->onTopic('search.events')
                 ->withConfigOptions([
@@ -395,26 +423,8 @@ class ProductSearchService
                     'retries' => 3,
                     'retry.backoff.ms' => 500,
                 ])
-                ->withHeaders([
-                    'event-type' => 'search.performed',
-                    'source' => 'search-service',
-                ])
-                ->withBody([
-                    'event' => 'search.performed',
-                    'timestamp' => now()->toIso8601String(),
-                    'data' => [
-                        'query' => $params['q'],
-                        'filters' => [
-                            'category_ids' => $params['category_ids'],
-                            'min_price' => $params['min_price'],
-                            'max_price' => $params['max_price'],
-                            'in_stock' => $params['in_stock'],
-                            'attributes' => $params['attributes'],
-                        ],
-                        'results_count' => $resultsCount,
-                        'sort' => $params['sort'],
-                    ],
-                ])
+                ->withHeaders($headers)
+                ->withBody($body)
                 ->send();
         } catch (\Throwable $e) {
             Log::error('Kafka publish failed on search.performed', [

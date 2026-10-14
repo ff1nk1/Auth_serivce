@@ -11,7 +11,10 @@ class SearchController extends Controller
 {
     public function __invoke(SearchProductsRequest $request, ProductSearchService $search): JsonResponse
     {
-        return response()->json($search->search($request->searchParams()));
+        return response()->json($search->search(
+            $request->searchParams(),
+            $request->shouldSkipAnalytics(),
+        ));
     }
 
     public function autocomplete(SearchAutocompleteRequest $request, ProductSearchService $search): JsonResponse

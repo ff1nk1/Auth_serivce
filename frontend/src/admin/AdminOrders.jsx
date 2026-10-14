@@ -25,6 +25,8 @@ export default function AdminOrders() {
   })
   const [page, setPage] = useState(initial?.current_page || 1)
   const [isLoading, setIsLoading] = useState(false)
+  const [shippingId, setShippingId] = useState(null)
+  const [actionError, setActionError] = useState('')
 
   const fetchOrders = useCallback(async (targetPage = 1) => {
     setIsLoading(true)
@@ -55,11 +57,31 @@ export default function AdminOrders() {
     }
   }
 
+  const handleShip = async (orderId) => {
+    setActionError('')
+    setShippingId(orderId)
+    try {
+      await api.post(`/admin/orders/${orderId}/ship`)
+      await fetchOrders(page)
+    } catch (error) {
+      console.error('Ship order error:', error)
+      setActionError(
+        error.response?.data?.message
+          || error.response?.data?.errors?.status?.[0]
+          || 'Не удалось отгрузить заказ'
+      )
+    } finally {
+      setShippingId(null)
+    }
+  }
+
   return (
     <div>
       <div className="admin-header">
         <h2>Заказы</h2>
       </div>
+
+      {actionError && <div className="analytics-error">{actionError}</div>}
 
       <div className="table-wrapper">
         {isLoading ? (
@@ -75,6 +97,7 @@ export default function AdminOrders() {
                 <th>Статус</th>
                 <th>Сумма</th>
                 <th>Создан</th>
+                <th>Действия</th>
               </tr>
             </thead>
             <tbody>
@@ -89,6 +112,20 @@ export default function AdminOrders() {
                   </td>
                   <td>{order.total_amount ?? '—'}</td>
                   <td>{formatDate(order.created_at)}</td>
+                  <td>
+                    {order.status === 'confirmed' ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={shippingId === order.id}
+                        onClick={() => handleShip(order.id)}
+                      >
+                        {shippingId === order.id ? '…' : 'Отгрузить'}
+                      </button>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

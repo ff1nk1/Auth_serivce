@@ -1,5 +1,6 @@
-import { api } from '../api/apiClient'
+import { analyticApi, api } from '../api/apiClient'
 import { requireAdmin, requireAnalyst } from '../auth/requireAuth'
+import { defaultAnalyticsRange } from './analyticsDates'
 
 export async function adminLayoutLoader() {
   return requireAnalyst()
@@ -32,4 +33,40 @@ export async function adminNotificationDetailLoader({ params }) {
   await requireAnalyst()
   const response = await api.get(`/notifications/${params.id}`)
   return response.data?.data || response.data
+}
+
+function analyticsRangeParams(request) {
+  const url = new URL(request.url)
+  let from = url.searchParams.get('from')
+  let to = url.searchParams.get('to')
+  if (!from || !to) {
+    const defaults = defaultAnalyticsRange()
+    from = from || defaults.from
+    to = to || defaults.to
+  }
+  return { from, to }
+}
+
+export async function adminAnalyticsUsersLoader({ request }) {
+  await requireAnalyst()
+  const response = await analyticApi.get('/analytics/users', {
+    params: analyticsRangeParams(request),
+  })
+  return response.data
+}
+
+export async function adminAnalyticsOrdersLoader({ request }) {
+  await requireAnalyst()
+  const response = await analyticApi.get('/analytics/orders', {
+    params: analyticsRangeParams(request),
+  })
+  return response.data
+}
+
+export async function adminAnalyticsSearchLoader({ request }) {
+  await requireAnalyst()
+  const response = await analyticApi.get('/analytics/search', {
+    params: { ...analyticsRangeParams(request), limit: 20 },
+  })
+  return response.data
 }

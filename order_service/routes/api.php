@@ -13,5 +13,6 @@ Route::post('/orders/{id}/pay', [OrderController::class, 'pay'])->whereNumber('i
 
 Route::get('/admin/orders', [AdminOrderController::class, 'index']);
 Route::get('/admin/orders/{id}', [AdminOrderController::class, 'show'])->whereNumber('id');
+Route::post('/admin/orders/{id}/ship', [AdminOrderController::class, 'ship'])->whereNumber('id');
 
 Route::post('/webhooks/stripe', StripeWebhookController::class);

@@ -19,4 +19,5 @@ include:
   - path: notification_service/compose.yml
   - path: order_service/compose.yml
   - path: search_service/compose.yml
+  - path: analytic_service/compose.yml
   - path: frontend/compose.yml

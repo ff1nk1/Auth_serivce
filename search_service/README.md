@@ -1,3 +1,15 @@
+# search_service
+
+## Loadtest and analytics
+
+k6 load tests must send `X-Skip-Analytics: 1`. Search still publishes `search.performed` to Kafka (realistic latency), but `analytic_service` skips ClickHouse insert when `skip_analytics` is set.
+
+```bash
+docker compose --profile loadtest run --rm search_k6 run /scripts/search-load.js
+```
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">

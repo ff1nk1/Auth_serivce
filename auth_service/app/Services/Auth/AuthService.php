@@ -47,6 +47,7 @@ class AuthService
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'name'  => $user->name,
+                'registered_at' => $user->created_at?->toIso8601String() ?? now()->toIso8601String(),
                 'event_type' => 'user.registered',
             ])
             ->send();
