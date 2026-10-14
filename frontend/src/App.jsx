@@ -29,6 +29,8 @@ import AdminNotificationDetail from './admin/AdminNotificationDetail'
 import AdminAnalyticsUsers from './admin/AdminAnalyticsUsers'
 import AdminAnalyticsOrders from './admin/AdminAnalyticsOrders'
 import AdminAnalyticsSearch from './admin/AdminAnalyticsSearch'
+import AdminAnalyticsStores from './admin/AdminAnalyticsStores'
+import AdminAnalyticsCategories from './admin/AdminAnalyticsCategories'
 
 import AppLayout, { appLayoutLoader } from './layouts/AppLayout'
 import RootErrorBoundary from './RootErrorBoundary'
@@ -41,6 +43,8 @@ import {
   adminAnalyticsUsersLoader,
   adminAnalyticsOrdersLoader,
   adminAnalyticsSearchLoader,
+  adminAnalyticsStoresLoader,
+  adminAnalyticsCategoriesLoader,
 } from './admin/loaders'
 import { ordersLoader, orderDetailLoader } from './orders/loaders'
 import { requireAuth } from './auth/requireAuth'
@@ -88,6 +92,16 @@ const router = createBrowserRouter(
           path="analytics/search"
           element={<AdminAnalyticsSearch />}
           loader={adminAnalyticsSearchLoader}
+        />
+        <Route
+          path="analytics/stores"
+          element={<AdminAnalyticsStores />}
+          loader={adminAnalyticsStoresLoader}
+        />
+        <Route
+          path="analytics/categories"
+          element={<AdminAnalyticsCategories />}
+          loader={adminAnalyticsCategoriesLoader}
         />
       </Route>
 

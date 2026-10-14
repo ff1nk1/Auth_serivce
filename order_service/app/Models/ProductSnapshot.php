@@ -16,6 +16,10 @@ class ProductSnapshot extends Model
         'name',
         'price',
         'store_id',
+        'store_name',
+        'category_id',
+        'category_name',
+        'category_slug',
     ];
 
     protected $casts = [

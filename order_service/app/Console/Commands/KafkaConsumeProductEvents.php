@@ -18,7 +18,7 @@ class KafkaConsumeProductEvents extends Command
 
         $consumer = Kafka::consumer(['product.created', 'product.updated'])
             ->withBrokers(config('kafka.brokers', 'kafka:29092'))
-            ->withConsumerGroupId('order-service-products-v1')
+            ->withConsumerGroupId('order-service-products-v2')
             ->withHandler(app(ProductEventsHandler::class))
             ->withAutoCommit()
             ->withOptions([

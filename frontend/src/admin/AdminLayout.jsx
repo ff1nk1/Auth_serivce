@@ -48,6 +48,12 @@ export default function AdminLayout() {
           <NavLink to="/admin/analytics/search" className={({ isActive }) => (isActive ? 'admin-nav-link active' : 'admin-nav-link')}>
             Поиск (аналитика)
           </NavLink>
+          <NavLink to="/admin/analytics/stores" className={({ isActive }) => (isActive ? 'admin-nav-link active' : 'admin-nav-link')}>
+            Магазины (аналитика)
+          </NavLink>
+          <NavLink to="/admin/analytics/categories" className={({ isActive }) => (isActive ? 'admin-nav-link active' : 'admin-nav-link')}>
+            Категории (аналитика)
+          </NavLink>
           <a
             href="http://localhost:8123/play"
             target="_blank"

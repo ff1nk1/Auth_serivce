@@ -40,7 +40,16 @@ class OutboxPostgresTransactionTest extends IntegrationTestCase
         $this->assertSame('order.events', $event->topic);
         $this->assertSame($orderId, $event->payload['order_id']);
         $this->assertSame([
-            ['product_id' => 501, 'store_id' => 2, 'quantity' => 2],
+            [
+                'product_id' => 501,
+                'store_id' => 2,
+                'store_name' => null,
+                'category_id' => null,
+                'category_name' => null,
+                'category_slug' => null,
+                'quantity' => 2,
+                'unit_price' => '100.00',
+            ],
         ], $event->payload['items']);
 
         $order = Order::query()->findOrFail($orderId);

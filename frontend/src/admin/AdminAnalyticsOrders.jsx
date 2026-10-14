@@ -64,8 +64,9 @@ export default function AdminAnalyticsOrders() {
     () => [
       { name: 'Created', value: data?.funnel?.created ?? 0 },
       { name: 'Paid', value: data?.funnel?.paid ?? 0 },
-      { name: 'Completed', value: data?.funnel?.completed ?? 0 },
       { name: 'Cancelled', value: data?.funnel?.cancelled ?? 0 },
+      { name: 'Open', value: data?.funnel?.open ?? 0 },
+      { name: 'Completed', value: data?.funnel?.completed ?? 0 },
     ],
     [data?.funnel],
   )
@@ -98,12 +99,16 @@ export default function AdminAnalyticsOrders() {
           <strong className="analytics-metric-value">{funnel.paid ?? 0}</strong>
         </div>
         <div className="analytics-metric-card">
-          <span className="analytics-metric-label">Completed (shipped)</span>
-          <strong className="analytics-metric-value">{funnel.completed ?? 0}</strong>
-        </div>
-        <div className="analytics-metric-card">
           <span className="analytics-metric-label">Cancelled</span>
           <strong className="analytics-metric-value">{funnel.cancelled ?? 0}</strong>
+        </div>
+        <div className="analytics-metric-card">
+          <span className="analytics-metric-label">Open</span>
+          <strong className="analytics-metric-value">{funnel.open ?? 0}</strong>
+        </div>
+        <div className="analytics-metric-card">
+          <span className="analytics-metric-label">Completed (shipped)</span>
+          <strong className="analytics-metric-value">{funnel.completed ?? 0}</strong>
         </div>
       </div>
 
@@ -114,23 +119,15 @@ export default function AdminAnalyticsOrders() {
         color="#2563eb"
       />
 
-      <h3 className="analytics-section-title">Конверсия по шагам</h3>
+      <h3 className="analytics-section-title">Конверсия</h3>
       <div className="analytics-metrics">
         <div className="analytics-metric-card">
           <span className="analytics-metric-label">Created → Paid</span>
           <strong className="analytics-metric-value">{formatRate(conversions.created_to_paid)}</strong>
         </div>
         <div className="analytics-metric-card">
-          <span className="analytics-metric-label">Paid → Completed</span>
-          <strong className="analytics-metric-value">{formatRate(conversions.paid_to_completed)}</strong>
-        </div>
-        <div className="analytics-metric-card">
-          <span className="analytics-metric-label">Created → Completed</span>
-          <strong className="analytics-metric-value">{formatRate(conversions.created_to_completed)}</strong>
-        </div>
-        <div className="analytics-metric-card">
-          <span className="analytics-metric-label">Cancel rate</span>
-          <strong className="analytics-metric-value">{formatRate(conversions.cancelled_rate)}</strong>
+          <span className="analytics-metric-label">Created → Cancelled</span>
+          <strong className="analytics-metric-value">{formatRate(conversions.created_to_cancelled)}</strong>
         </div>
       </div>
 

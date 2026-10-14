@@ -317,7 +317,12 @@ class OrderService
                 $outboxItems[] = [
                     'product_id' => $productId,
                     'store_id' => (int) $snapshot->store_id,
+                    'store_name' => $snapshot->store_name,
+                    'category_id' => $snapshot->category_id !== null ? (int) $snapshot->category_id : null,
+                    'category_name' => $snapshot->category_name,
+                    'category_slug' => $snapshot->category_slug,
                     'quantity' => $quantity,
+                    'unit_price' => $unitPrice,
                 ];
             }
 

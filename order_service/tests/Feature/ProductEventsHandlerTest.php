@@ -30,7 +30,7 @@ class ProductEventsHandlerTest extends TestCase
                 'price' => '199.99',
                 'store_id' => 7,
                 'description' => 'ignored',
-                'category' => ['id' => 3, 'name' => 'Gadgets'],
+                'category' => ['id' => 3, 'name' => 'Gadgets', 'slug' => 'gadgets'],
                 'store' => ['id' => 7, 'name' => 'Main'],
             ],
         ]);
@@ -42,10 +42,17 @@ class ProductEventsHandlerTest extends TestCase
             'name' => 'Phone',
             'price' => '199.99',
             'store_id' => 7,
+            'store_name' => 'Main',
+            'category_id' => 3,
+            'category_name' => 'Gadgets',
+            'category_slug' => 'gadgets',
         ]);
-        $this->assertSame(['id', 'name', 'price', 'store_id', 'created_at', 'updated_at'], array_keys(
-            ProductSnapshot::query()->find(42)->getAttributes()
-        ));
+        $attrs = array_keys(ProductSnapshot::query()->find(42)->getAttributes());
+        sort($attrs);
+        $this->assertSame(
+            ['category_id', 'category_name', 'category_slug', 'created_at', 'id', 'name', 'price', 'store_id', 'store_name', 'updated_at'],
+            $attrs
+        );
     }
 
     public function test_product_updated_overwrites_snapshot(): void
@@ -140,6 +147,7 @@ class ProductEventsHandlerTest extends TestCase
                 'name' => 'Casted',
                 'price' => 12.5,
                 'store_id' => '3',
+                'category_id' => '5',
             ],
         ]);
 
@@ -149,6 +157,7 @@ class ProductEventsHandlerTest extends TestCase
         $this->assertNotNull($snapshot);
         $this->assertSame(88, $snapshot->id);
         $this->assertSame(3, $snapshot->store_id);
+        $this->assertSame(5, $snapshot->category_id);
         $this->assertSame('12.50', (string) $snapshot->price);
     }
 

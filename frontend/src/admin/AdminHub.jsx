@@ -47,6 +47,18 @@ export default function AdminHub() {
           </Link>
         </li>
         <li>
+          <Link to="/admin/analytics/stores" className="admin-hub-link">
+            <strong>Аналитика: магазины</strong>
+            <span>Заказы и выручка по магазинам</span>
+          </Link>
+        </li>
+        <li>
+          <Link to="/admin/analytics/categories" className="admin-hub-link">
+            <strong>Аналитика: категории</strong>
+            <span>Заказы товаров по категориям</span>
+          </Link>
+        </li>
+        <li>
           <a
             href="http://localhost:8123/play"
             target="_blank"

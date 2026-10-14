@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -22,6 +23,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /analytics/users", s.handleUsers)
 	mux.HandleFunc("GET /analytics/orders", s.handleOrders)
+	mux.HandleFunc("GET /analytics/orders/stores", s.handleOrdersByStore)
+	mux.HandleFunc("GET /analytics/orders/categories", s.handleOrdersByCategory)
 	mux.HandleFunc("GET /analytics/search", s.handleSearch)
 	return mux
 }
@@ -71,14 +74,10 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
-	limit := 20
-	if raw := r.URL.Query().Get("limit"); raw != "" {
-		n, err := strconv.Atoi(raw)
-		if err != nil || n < 1 || n > 100 {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "limit must be 1..100"})
-			return
-		}
-		limit = n
+	limit, err := parseLimit(r, 20)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
 	}
 	m, err := s.store.SearchMetrics(r.Context(), from, to, limit)
 	if err != nil {
@@ -86,6 +85,78 @@ func (s *Server) handleSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, m)
+}
+
+func (s *Server) handleOrdersByStore(w http.ResponseWriter, r *http.Request) {
+	from, to, err := parseRange(r)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	storeID, err := parseOptionalUint64(r, "store_id")
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	limit, err := parseLimit(r, 20)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	m, err := s.store.OrdersByStore(r.Context(), storeID, from, to, limit)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, m)
+}
+
+func (s *Server) handleOrdersByCategory(w http.ResponseWriter, r *http.Request) {
+	from, to, err := parseRange(r)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	categoryID, err := parseOptionalUint64(r, "category_id")
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	limit, err := parseLimit(r, 20)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	m, err := s.store.OrdersByCategory(r.Context(), categoryID, from, to, limit)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, m)
+}
+
+func parseLimit(r *http.Request, def int) (int, error) {
+	raw := r.URL.Query().Get("limit")
+	if raw == "" {
+		return def, nil
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 1 || n > 100 {
+		return 0, fmt.Errorf("limit must be 1..100")
+	}
+	return n, nil
+}
+
+func parseOptionalUint64(r *http.Request, key string) (*uint64, error) {
+	raw := r.URL.Query().Get(key)
+	if raw == "" {
+		return nil, nil
+	}
+	n, err := strconv.ParseUint(raw, 10, 64)
+	if err != nil || n == 0 {
+		return nil, fmt.Errorf("%s must be a positive integer", key)
+	}
+	return &n, nil
 }
 
 func parseRange(r *http.Request) (*time.Time, *time.Time, error) {

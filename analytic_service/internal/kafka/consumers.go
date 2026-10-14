@@ -34,10 +34,16 @@ func (c *Consumers) Run(ctx context.Context) error {
 		return c.runReader(ctx, "analytic-service-users-v3", "user.events", c.handleUser)
 	})
 	g.Go(func() error {
-		return c.runReader(ctx, "analytic-service-orders-v3", "order.events", c.handleOrder)
+		return c.runReader(ctx, "analytic-service-orders-v5", "order.events", c.handleOrder)
 	})
 	g.Go(func() error {
 		return c.runReader(ctx, "analytic-service-search-v3", "search.events", c.handleSearch)
+	})
+	g.Go(func() error {
+		return c.runReader(ctx, "analytic-service-products-v1", "product.created", c.handleProduct)
+	})
+	g.Go(func() error {
+		return c.runReader(ctx, "analytic-service-products-v1", "product.updated", c.handleProduct)
 	})
 
 	return g.Wait()
@@ -124,6 +130,62 @@ func (c *Consumers) handleUser(ctx context.Context, msg kafka.Message) error {
 	return c.store.InsertUserRegistration(ctx, row)
 }
 
+func (c *Consumers) handleProduct(ctx context.Context, msg kafka.Message) error {
+	body, err := parseJSONBody(msg)
+	if err != nil {
+		c.log.Warn("skip invalid product json", "err", err)
+		return nil
+	}
+	et := resolveEventType(msg, body)
+	if et != "product.created" && et != "product.updated" {
+		return nil
+	}
+
+	data, _ := body["data"].(map[string]any)
+	if data == nil {
+		c.log.Warn("skip product event without data")
+		return nil
+	}
+
+	productID := asUint64(data["id"])
+	if productID == 0 {
+		c.log.Warn("skip product event without id", "event_type", et)
+		return nil
+	}
+
+	categoryID := asUint64(data["category_id"])
+	categoryName := ""
+	categorySlug := ""
+	if cat, ok := data["category"].(map[string]any); ok {
+		if categoryID == 0 {
+			categoryID = asUint64(cat["id"])
+		}
+		categoryName = asString(cat["name"])
+		categorySlug = asString(cat["slug"])
+	}
+
+	storeID := asUint64(data["store_id"])
+	storeName := ""
+	if st, ok := data["store"].(map[string]any); ok {
+		if storeID == 0 {
+			storeID = asUint64(st["id"])
+		}
+		storeName = asString(st["name"])
+	}
+
+	return c.store.InsertProductDim(ctx, store.ProductDim{
+		ProductID:      productID,
+		StoreID:        storeID,
+		StoreName:      storeName,
+		CategoryID:     categoryID,
+		CategoryName:   categoryName,
+		CategorySlug:   categorySlug,
+		KafkaTopic:     msg.Topic,
+		KafkaPartition: int32(msg.Partition),
+		KafkaOffset:    msg.Offset,
+	})
+}
+
 func (c *Consumers) handleOrder(ctx context.Context, msg kafka.Message) error {
 	body, err := parseJSONBody(msg)
 	if err != nil {
@@ -170,7 +232,83 @@ func (c *Consumers) handleOrder(ctx context.Context, msg kafka.Message) error {
 	if row.TotalAmount == "" {
 		row.TotalAmount = "0.00"
 	}
-	return c.store.InsertOrderFunnelEvent(ctx, row)
+	if err := c.store.InsertOrderFunnelEvent(ctx, row); err != nil {
+		return err
+	}
+	if short != "created" {
+		return nil
+	}
+	return c.insertOrderLineItems(ctx, msg, body, row.OrderID, ts)
+}
+
+func (c *Consumers) insertOrderLineItems(ctx context.Context, msg kafka.Message, body map[string]any, orderID uint64, ts time.Time) error {
+	rawItems, ok := body["items"].([]any)
+	if !ok || len(rawItems) == 0 {
+		return nil
+	}
+	lines := make([]store.OrderLineItem, 0, len(rawItems))
+	for _, raw := range rawItems {
+		item, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		productID := asUint64(item["product_id"])
+		if productID == 0 {
+			continue
+		}
+		unitPrice := asString(item["unit_price"])
+		if unitPrice == "" {
+			unitPrice = "0.00"
+		}
+
+		storeID := asUint64(item["store_id"])
+		storeName := asString(item["store_name"])
+		categoryID := asUint64(item["category_id"])
+		categoryName := asString(item["category_name"])
+		categorySlug := asString(item["category_slug"])
+
+		needDim := categoryID == 0 || storeName == "" || (categoryID != 0 && (categoryName == "" || categorySlug == ""))
+		if needDim {
+			dim, found, err := c.store.LookupProductDim(ctx, productID)
+			if err != nil {
+				return err
+			}
+			if found {
+				if storeID == 0 {
+					storeID = dim.StoreID
+				}
+				if storeName == "" {
+					storeName = dim.StoreName
+				}
+				if categoryID == 0 {
+					categoryID = dim.CategoryID
+				}
+				if categoryName == "" {
+					categoryName = dim.CategoryName
+				}
+				if categorySlug == "" {
+					categorySlug = dim.CategorySlug
+				}
+			}
+		}
+
+		lines = append(lines, store.OrderLineItem{
+			OrderID:        orderID,
+			ProductID:      productID,
+			StoreID:        storeID,
+			StoreName:      storeName,
+			CategoryID:     categoryID,
+			CategoryName:   categoryName,
+			CategorySlug:   categorySlug,
+			Quantity:       asUint32(item["quantity"]),
+			UnitPrice:      unitPrice,
+			OccurredAt:     ts,
+			KafkaTopic:     msg.Topic,
+			KafkaPartition: int32(msg.Partition),
+			KafkaOffset:    msg.Offset,
+		})
+	}
+	return c.store.InsertOrderLineItems(ctx, lines)
 }
 
 func (c *Consumers) handleSearch(ctx context.Context, msg kafka.Message) error {

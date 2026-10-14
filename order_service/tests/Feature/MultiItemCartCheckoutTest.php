@@ -72,12 +72,22 @@ class MultiItemCartCheckoutTest extends TestCase
             [
                 'product_id' => 10,
                 'store_id' => 1,
+                'store_name' => null,
+                'category_id' => null,
+                'category_name' => null,
+                'category_slug' => null,
                 'quantity' => 2,
+                'unit_price' => '100.00',
             ],
             [
                 'product_id' => 20,
                 'store_id' => 2,
+                'store_name' => null,
+                'category_id' => null,
+                'category_name' => null,
+                'category_slug' => null,
                 'quantity' => 1,
+                'unit_price' => '25.50',
             ],
         ], $event->payload['items']);
         $this->assertArrayHasKey($event->payload['saga_id'].':order.created', $this->sagaStepStore);

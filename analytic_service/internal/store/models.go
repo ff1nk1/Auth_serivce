@@ -24,6 +24,34 @@ type OrderFunnelEvent struct {
 	KafkaOffset    int64
 }
 
+type OrderLineItem struct {
+	OrderID        uint64
+	ProductID      uint64
+	StoreID        uint64
+	StoreName      string
+	CategoryID     uint64
+	CategoryName   string
+	CategorySlug   string
+	Quantity       uint32
+	UnitPrice      string
+	OccurredAt     time.Time
+	KafkaTopic     string
+	KafkaPartition int32
+	KafkaOffset    int64
+}
+
+type ProductDim struct {
+	ProductID      uint64
+	StoreID        uint64
+	StoreName      string
+	CategoryID     uint64
+	CategoryName   string
+	CategorySlug   string
+	KafkaTopic     string
+	KafkaPartition int32
+	KafkaOffset    int64
+}
+
 type SearchQuery struct {
 	Query          string
 	ResultsCount   uint32
@@ -49,15 +77,14 @@ type UsersMetrics struct {
 type OrderFunnel struct {
 	Created   uint64 `json:"created"`
 	Paid      uint64 `json:"paid"`
-	Completed uint64 `json:"completed"`
 	Cancelled uint64 `json:"cancelled"`
+	Open      uint64 `json:"open"`
+	Completed uint64 `json:"completed"`
 }
 
 type OrderConversions struct {
 	CreatedToPaid      float64 `json:"created_to_paid"`
-	PaidToCompleted    float64 `json:"paid_to_completed"`
-	CreatedToCompleted float64 `json:"created_to_completed"`
-	CancelledRate      float64 `json:"cancelled_rate"`
+	CreatedToCancelled float64 `json:"created_to_cancelled"`
 }
 
 type RevenueDay struct {
@@ -88,4 +115,34 @@ type SearchMetrics struct {
 	ZeroResultRate     float64      `json:"zero_result_rate"`
 	PopularQueries     []QueryCount `json:"popular_queries"`
 	ZeroResultQueries  []QueryCount `json:"zero_result_queries"`
+}
+
+type DimensionOption struct {
+	ID   uint64 `json:"id"`
+	Name string `json:"name"`
+	Slug string `json:"slug,omitempty"`
+}
+
+type DimensionBreakdown struct {
+	ID             uint64 `json:"id"`
+	Name           string `json:"name"`
+	Slug           string `json:"slug,omitempty"`
+	OrdersCount    uint64 `json:"orders_count"`
+	ItemsQuantity  uint64 `json:"items_quantity"`
+	LineAmount     string `json:"line_amount"`
+	PaidLineAmount string `json:"paid_line_amount"`
+}
+
+type DimensionMetrics struct {
+	ID             uint64               `json:"id,omitempty"`
+	Name           string               `json:"name,omitempty"`
+	Slug           string               `json:"slug,omitempty"`
+	Funnel         *OrderFunnel         `json:"funnel,omitempty"`
+	Conversions    *OrderConversions    `json:"conversions,omitempty"`
+	OrdersCount    uint64               `json:"orders_count"`
+	ItemsQuantity  uint64               `json:"items_quantity"`
+	LineAmount     string               `json:"line_amount"`
+	PaidLineAmount string               `json:"paid_line_amount"`
+	Items          []DimensionBreakdown `json:"items,omitempty"`
+	Options        []DimensionOption    `json:"options,omitempty"`
 }

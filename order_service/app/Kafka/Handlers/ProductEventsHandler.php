@@ -31,6 +31,22 @@ class ProductEventsHandler
         $name = $data['name'] ?? null;
         $price = $data['price'] ?? null;
         $storeId = $data['store_id'] ?? null;
+        $categoryId = $data['category_id'] ?? null;
+        if ($categoryId === null && isset($data['category']) && is_array($data['category'])) {
+            $categoryId = $data['category']['id'] ?? null;
+        }
+
+        $storeName = null;
+        if (isset($data['store']) && is_array($data['store'])) {
+            $storeName = $data['store']['name'] ?? null;
+        }
+
+        $categoryName = null;
+        $categorySlug = null;
+        if (isset($data['category']) && is_array($data['category'])) {
+            $categoryName = $data['category']['name'] ?? null;
+            $categorySlug = $data['category']['slug'] ?? null;
+        }
 
         if ($id === null || $name === null || $price === null || $storeId === null) {
             Log::warning('Kafka: product event с неполными полями снапшота', ['data' => $data]);
@@ -44,6 +60,10 @@ class ProductEventsHandler
                 'name' => (string) $name,
                 'price' => $price,
                 'store_id' => (int) $storeId,
+                'store_name' => $storeName !== null ? (string) $storeName : null,
+                'category_id' => $categoryId !== null ? (int) $categoryId : null,
+                'category_name' => $categoryName !== null ? (string) $categoryName : null,
+                'category_slug' => $categorySlug !== null ? (string) $categorySlug : null,
             ]
         );
 
@@ -52,6 +72,9 @@ class ProductEventsHandler
             'product_id' => $snapshot->id,
             'name' => $snapshot->name,
             'price' => (string) $snapshot->price,
+            'category_id' => $snapshot->category_id,
+            'store_name' => $snapshot->store_name,
+            'category_name' => $snapshot->category_name,
         ]);
     }
 }

@@ -70,3 +70,23 @@ export async function adminAnalyticsSearchLoader({ request }) {
   })
   return response.data
 }
+
+export async function adminAnalyticsStoresLoader({ request }) {
+  await requireAnalyst()
+  const url = new URL(request.url)
+  const params = { ...analyticsRangeParams(request), limit: 20 }
+  const storeId = url.searchParams.get('store_id')
+  if (storeId) params.store_id = storeId
+  const response = await analyticApi.get('/analytics/orders/stores', { params })
+  return response.data
+}
+
+export async function adminAnalyticsCategoriesLoader({ request }) {
+  await requireAnalyst()
+  const url = new URL(request.url)
+  const params = { ...analyticsRangeParams(request), limit: 20 }
+  const categoryId = url.searchParams.get('category_id')
+  if (categoryId) params.category_id = categoryId
+  const response = await analyticApi.get('/analytics/orders/categories', { params })
+  return response.data
+}

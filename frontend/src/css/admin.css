@@ -533,3 +533,30 @@
     color: #991b1b;
     font-size: 14px;
 }
+
+.link-button {
+    border: none;
+    background: none;
+    padding: 0;
+    color: #2563eb;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.link-button:hover {
+    text-decoration: underline;
+}
+
+.analytics-id-hint {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.analytics-muted {
+    margin: -4px 0 16px;
+    color: #7b8794;
+    font-size: 13px;
+}

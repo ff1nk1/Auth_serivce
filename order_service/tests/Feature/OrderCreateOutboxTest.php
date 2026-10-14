@@ -38,6 +38,10 @@ class OrderCreateOutboxTest extends TestCase
             'name' => 'Phone',
             'price' => '199.99',
             'store_id' => 7,
+            'store_name' => 'Main Store',
+            'category_id' => 3,
+            'category_name' => 'Gadgets',
+            'category_slug' => 'gadgets',
         ]);
 
         $response = $this->postJson('/api/orders', [
@@ -75,7 +79,12 @@ class OrderCreateOutboxTest extends TestCase
             [
                 'product_id' => 42,
                 'store_id' => 7,
+                'store_name' => 'Main Store',
+                'category_id' => 3,
+                'category_name' => 'Gadgets',
+                'category_slug' => 'gadgets',
                 'quantity' => 2,
+                'unit_price' => '199.99',
             ],
         ], $event->payload['items']);
         $this->assertArrayHasKey($event->payload['saga_id'].':order.created', $this->sagaStepStore);
