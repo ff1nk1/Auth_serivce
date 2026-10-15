@@ -98,10 +98,16 @@ services:
       MAIL_HOST: notification_service_mailhog
       MAIL_PORT: 1025
     depends_on:
-      - notification_app
-      - notification_mongodb
-      - notification_mailhog
-      - notification_db
+      notification_app:
+        condition: service_started
+      notification_mongodb:
+        condition: service_started
+      notification_mailhog:
+        condition: service_started
+      notification_db:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - php_project_net
 
@@ -124,10 +130,16 @@ services:
       MAIL_HOST: notification_service_mailhog
       MAIL_PORT: 1025
     depends_on:
-      - notification_app
-      - notification_mongodb
-      - notification_mailhog
-      - notification_db
+      notification_app:
+        condition: service_started
+      notification_mongodb:
+        condition: service_started
+      notification_mailhog:
+        condition: service_started
+      notification_db:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - php_project_net
 

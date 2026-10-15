@@ -18,7 +18,7 @@
 #   - PHP vendor/: auto-installed via Docker composer if missing (or ./scripts/bootstrap.sh)
 #   - order integration: STRIPE_SECRET + STRIPE_WEBHOOK_SECRET in order_service/.env
 #     (real Stripe test-mode API)
-#   - analytic: pulls golang:1.22-bookworm if missing; joins network php_project_net
+#   - analytic: pulls golang:1.23-bookworm if missing; joins network php_project_net
 #
 # Short names: auth catalog notification order search analytic
 
@@ -29,7 +29,7 @@ cd "$ROOT"
 
 COMPOSE=(docker compose)
 NETWORK=php_project_net
-GOLANG_IMAGE=golang:1.22-bookworm
+GOLANG_IMAGE=golang:1.23-bookworm
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

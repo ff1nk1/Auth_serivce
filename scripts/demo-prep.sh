@@ -115,11 +115,13 @@ if should_run search; then
   add_need search_app search_opensearch
 fi
 if should_run catalog; then
-  add_need catalog_app kafka catalog_kafka_outbox_worker \
+  add_need catalog_app kafka catalog_kafka_order_consumer catalog_kafka_outbox_worker \
     search_kafka_product_consumer search_kafka_category_consumer search_kafka_stock_consumer
 fi
 if should_run order; then
-  add_need order_app catalog_db
+  add_need order_app catalog_db kafka \
+    order_kafka_outbox_worker order_kafka_stock_consumer \
+    catalog_kafka_order_consumer catalog_kafka_outbox_worker
 fi
 
 declare -A SEEN=()

@@ -92,9 +92,14 @@ services:
       # Avoid Predis stream errors killing the consumer on Redis blips during stack restarts.
       KAFKA_CACHE_DRIVER: array
     depends_on:
-      - order_app
-      - order_db
-      - order_redis
+      order_app:
+        condition: service_started
+      order_db:
+        condition: service_started
+      order_redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - php_project_net
 
@@ -116,9 +121,14 @@ services:
       KAFKA_BROKERS: kafka:29092
       KAFKA_CACHE_DRIVER: array
     depends_on:
-      - order_app
-      - order_db
-      - order_redis
+      order_app:
+        condition: service_started
+      order_db:
+        condition: service_started
+      order_redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - php_project_net
 
@@ -140,9 +150,14 @@ services:
       KAFKA_BROKERS: kafka:29092
       KAFKA_CACHE_DRIVER: array
     depends_on:
-      - order_app
-      - order_db
-      - order_redis
+      order_app:
+        condition: service_started
+      order_db:
+        condition: service_started
+      order_redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - php_project_net
 

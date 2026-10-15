@@ -68,7 +68,7 @@ services:
       analytic_clickhouse:
         condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
     networks:
       - php_project_net
 

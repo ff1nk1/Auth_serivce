@@ -126,9 +126,14 @@ services:
       REDIS_PORT: 6379
       KAFKA_BROKERS: kafka:29092
     depends_on:
-      - catalog_app
-      - catalog_db
-      - catalog_redis
+      catalog_app:
+        condition: service_started
+      catalog_db:
+        condition: service_started
+      catalog_redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - php_project_net
 
@@ -149,8 +154,12 @@ services:
       REDIS_PORT: 6379
       KAFKA_BROKERS: kafka:29092
     depends_on:
-      - catalog_app
-      - catalog_db
+      catalog_app:
+        condition: service_started
+      catalog_db:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - php_project_net
 

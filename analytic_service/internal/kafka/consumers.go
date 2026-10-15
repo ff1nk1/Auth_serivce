@@ -41,19 +41,17 @@ func (c *Consumers) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		return c.runReader(ctx, "analytic-service-users-v3", "user.events", c.handleUser)
+		return c.runReader(ctx, "analytic-service-users-v3", []string{"user.events"}, c.handleUser)
 	})
 	g.Go(func() error {
-		return c.runReader(ctx, "analytic-service-orders-v5", "order.events", c.handleOrder)
+		return c.runReader(ctx, "analytic-service-orders-v5", []string{"order.events"}, c.handleOrder)
 	})
 	g.Go(func() error {
-		return c.runReader(ctx, "analytic-service-search-v3", "search.events", c.handleSearch)
+		return c.runReader(ctx, "analytic-service-search-v3", []string{"search.events"}, c.handleSearch)
 	})
 	g.Go(func() error {
-		return c.runReader(ctx, "analytic-service-products-v1", "product.created", c.handleProduct)
-	})
-	g.Go(func() error {
-		return c.runReader(ctx, "analytic-service-products-v1", "product.updated", c.handleProduct)
+		return c.runReader(ctx, "analytic-service-products-v1",
+			[]string{"product.created", "product.updated"}, c.handleProduct)
 	})
 
 	return g.Wait()
@@ -61,20 +59,26 @@ func (c *Consumers) Run(ctx context.Context) error {
 
 type handlerFunc func(ctx context.Context, msg kafka.Message) error
 
-func (c *Consumers) runReader(ctx context.Context, groupID, topic string, handle handlerFunc) error {
-	r := kafka.NewReader(kafka.ReaderConfig{
+func (c *Consumers) runReader(ctx context.Context, groupID string, topics []string, handle handlerFunc) error {
+	cfg := kafka.ReaderConfig{
 		Brokers:        c.brokers,
 		GroupID:        groupID,
-		Topic:          topic,
 		MinBytes:       1,
 		MaxBytes:       10e6,
 		MaxWait:        time.Second,
 		StartOffset:    kafka.FirstOffset,
 		CommitInterval: 0, // manual commit after successful insert
-	})
+	}
+	if len(topics) == 1 {
+		cfg.Topic = topics[0]
+	} else {
+		cfg.GroupTopics = topics
+	}
+
+	r := kafka.NewReader(cfg)
 	defer r.Close()
 
-	c.log.Info("kafka consumer started", "group", groupID, "topic", topic)
+	c.log.Info("kafka consumer started", "group", groupID, "topics", topics)
 
 	for {
 		msg, err := r.FetchMessage(ctx)

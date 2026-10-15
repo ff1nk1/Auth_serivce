@@ -145,6 +145,9 @@ class OrderCreatedHandler
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
             ]);
+            // Rethrow so the consumer does not auto-commit a failed message
+            // (otherwise stock.* is never written and the order stays pending).
+            throw $e;
         } finally {
             if ($sagaId !== null) {
                 $this->saga->release($sagaId, 'stock.reserve');
