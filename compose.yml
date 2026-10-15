@@ -6,11 +6,11 @@
 #   docker compose up -d auth_app auth_db auth_redis
 #   docker compose up -d frontend frontend_nginx
 #
-# Migrations / seeders:
-#   docker compose exec auth_app php artisan migrate --seed
-#   docker compose exec catalog_app php artisan migrate --seed
-#   docker compose exec notification_app php artisan migrate --seed
-#   docker compose exec order_app php artisan migrate
+# Migrations / seeders (containers must already be up):
+#   ./scripts/demo-prep.sh
+#
+# All microservice tests (containers must already be up):
+#   ./scripts/test-all.sh
 
 include:
   - path: infra/compose.yml

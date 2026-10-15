@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Console\Commands\KafkaOutboxWorker;
 use App\Models\OutboxEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Junges\Kafka\Facades\Kafka;
 use Tests\TestCase;
 
@@ -65,6 +66,16 @@ class KafkaOutboxWorkerTest extends TestCase
     public function test_process_batch_returns_zero_when_empty(): void
     {
         Kafka::fake();
+
+        $this->assertSame(0, app(KafkaOutboxWorker::class)->processBatch());
+        Kafka::assertNothingPublished();
+    }
+
+    public function test_process_batch_returns_zero_when_outbox_table_missing(): void
+    {
+        Kafka::fake();
+
+        Schema::dropIfExists('outbox_events');
 
         $this->assertSame(0, app(KafkaOutboxWorker::class)->processBatch());
         Kafka::assertNothingPublished();

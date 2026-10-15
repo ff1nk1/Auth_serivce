@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Kafka\Handlers\ProductEventsHandler;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Schema;
 use Junges\Kafka\Facades\Kafka;
 
 class KafkaConsumeProductEvents extends Command
@@ -15,6 +16,11 @@ class KafkaConsumeProductEvents extends Command
     public function handle(): int
     {
         $this->info('Запуск консьюмера для топиков product.created и product.updated...');
+
+        while (! Schema::hasTable('product_snapshots')) {
+            $this->warn('Таблица product_snapshots ещё нет — ждём миграции (sleep 5s)...');
+            sleep(5);
+        }
 
         $consumer = Kafka::consumer(['product.created', 'product.updated'])
             ->withBrokers(config('kafka.brokers', 'kafka:29092'))

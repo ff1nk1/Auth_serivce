@@ -8,18 +8,26 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * Requires MailHog (compose :1025 SMTP, :8025 API) and MongoDB.
+ * Requires MailHog (compose SMTP :1025, API :8025) and MongoDB.
+ * Defaults to Docker DNS hostname; override with MAILHOG_HOST for host-side runs.
  */
 class WelcomeMailMailhogTest extends TestCase
 {
+    private string $mailhogHost;
+
+    private string $mailhogApiBase;
+
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->mailhogHost = env('MAILHOG_HOST', 'notification_service_mailhog');
+        $this->mailhogApiBase = 'http://'.$this->mailhogHost.':8025';
+
         config([
             'mail.default' => 'smtp',
             'mail.mailers.smtp.transport' => 'smtp',
-            'mail.mailers.smtp.host' => '127.0.0.1',
+            'mail.mailers.smtp.host' => $this->mailhogHost,
             'mail.mailers.smtp.port' => 1025,
             'mail.mailers.smtp.encryption' => null,
             'mail.mailers.smtp.username' => null,
@@ -29,10 +37,10 @@ class WelcomeMailMailhogTest extends TestCase
         EmailLog::truncate();
 
         if (! $this->mailhogIsReachable()) {
-            $this->markTestSkipped('MailHog is not running on 127.0.0.1:8025.');
+            $this->markTestSkipped('MailHog is not running at '.$this->mailhogApiBase.'.');
         }
 
-        Http::delete('http://127.0.0.1:8025/api/v1/messages');
+        Http::delete($this->mailhogApiBase.'/api/v1/messages');
     }
 
     public function test_welcome_mail_reaches_mailhog_and_persists_sent_in_mongo(): void
@@ -55,7 +63,7 @@ class WelcomeMailMailhogTest extends TestCase
             'moved_to_dlq' => false,
         ], 'mongodb');
 
-        $messages = Http::get('http://127.0.0.1:8025/api/v2/messages')->json();
+        $messages = Http::get($this->mailhogApiBase.'/api/v2/messages')->json();
         $this->assertGreaterThan(0, $messages['total'] ?? 0);
 
         $matched = collect($messages['items'] ?? [])->first(function (array $item) use ($email) {
@@ -79,7 +87,7 @@ class WelcomeMailMailhogTest extends TestCase
     private function mailhogIsReachable(): bool
     {
         try {
-            $response = Http::timeout(1)->get('http://127.0.0.1:8025/api/v2/messages');
+            $response = Http::timeout(1)->get($this->mailhogApiBase.'/api/v2/messages');
 
             return $response->successful();
         } catch (\Throwable) {
@@ -87,4 +95,3 @@ class WelcomeMailMailhogTest extends TestCase
         }
     }
 }
-

@@ -33,11 +33,11 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
-        <env name="KAFKA_BROKERS" value="localhost:9092"/>
-        <env name="MONGODB_HOST" value="127.0.0.1" force="true"/>
-        <env name="MONGODB_PORT" value="27017" force="true"/>
-        <env name="MONGODB_DATABASE" value="notification_db_test" force="true"/>
-        <env name="MONGO_INITDB_ROOT_USERNAME" value="root" force="true"/>
-        <env name="MONGO_INITDB_ROOT_PASSWORD" value="root" force="true"/>
+        <env name="KAFKA_BROKERS" value="kafka:29092"/>
+        <env name="MONGODB_HOST" value="notification_service_mongodb"/>
+        <env name="MONGODB_PORT" value="27017"/>
+        <env name="MONGODB_DATABASE" value="notification_db_test"/>
+        <env name="MONGO_INITDB_ROOT_USERNAME" value="root"/>
+        <env name="MONGO_INITDB_ROOT_PASSWORD" value="root"/>
     </php>
 </phpunit>

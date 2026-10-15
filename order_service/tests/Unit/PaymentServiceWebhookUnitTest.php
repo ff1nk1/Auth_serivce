@@ -8,7 +8,7 @@ use App\Models\Payment;
 use App\Models\ProductSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Tests\Concerns\RequiresStripe;
+use Tests\Concerns\UsesFakeStripe;
 use Tests\Concerns\UsesRedis;
 use Tests\TestCase;
 
@@ -18,15 +18,14 @@ use Tests\TestCase;
 class PaymentServiceWebhookUnitTest extends TestCase
 {
     use RefreshDatabase;
-    use RequiresStripe;
+    use UsesFakeStripe;
     use UsesRedis;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->enableRedis();
-        // phpunit.xml provides whsec_test_secret; keep it for local HMAC.
-        config(['services.stripe.webhook_secret' => env('STRIPE_WEBHOOK_SECRET', 'whsec_test_secret')]);
+        $this->useFakeStripe();
     }
 
     public function test_checkout_completed_writes_paid_and_confirmed_outbox(): void
@@ -39,7 +38,7 @@ class PaymentServiceWebhookUnitTest extends TestCase
             'stripe_checkout_session_id' => 'cs_test_unit_paid',
         ]);
 
-        $signed = $this->signStripeWebhookPayload([
+        $signed = $this->signFakeStripeWebhook([
             'id' => 'evt_unit_paid',
             'type' => 'checkout.session.completed',
             'data' => [
@@ -90,7 +89,7 @@ class PaymentServiceWebhookUnitTest extends TestCase
             'stripe_checkout_session_id' => 'cs_test_unit_expired',
         ]);
 
-        $signed = $this->signStripeWebhookPayload([
+        $signed = $this->signFakeStripeWebhook([
             'id' => 'evt_unit_expired',
             'type' => 'checkout.session.expired',
             'data' => [

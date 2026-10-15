@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\OutboxEvent;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Junges\Kafka\Facades\Kafka;
 
 class KafkaOutboxWorker extends Command
@@ -30,6 +31,10 @@ class KafkaOutboxWorker extends Command
 
     public function processBatch(): int
     {
+        if (! Schema::hasTable('outbox_events')) {
+            return 0;
+        }
+
         $events = OutboxEvent::query()->orderBy('created_at', 'asc')->limit(50)->get();
 
         if ($events->isEmpty()) {

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Kafka\Handlers\ProductEventsHandler;
 use App\Models\ProductSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Junges\Kafka\Contracts\ConsumerMessage;
 use Mockery;
 use Tests\TestCase;
@@ -222,6 +223,28 @@ class ProductEventsHandlerTest extends TestCase
         $this->artisan('list', ['namespace' => 'kafka'])
             ->expectsOutputToContain('kafka:consume:product-events')
             ->assertSuccessful();
+    }
+
+    public function test_skips_upsert_when_product_snapshots_table_missing(): void
+    {
+        Schema::shouldReceive('hasTable')
+            ->once()
+            ->with('product_snapshots')
+            ->andReturn(false);
+
+        $message = $this->consumerMessage('product.created', [
+            'event' => 'product.created',
+            'data' => [
+                'id' => 1,
+                'name' => 'Phone',
+                'price' => '10.00',
+                'store_id' => 1,
+            ],
+        ]);
+
+        (new ProductEventsHandler)($message);
+
+        $this->assertSame(0, ProductSnapshot::query()->count());
     }
 
     private function consumerMessage(?string $eventType, array $body): ConsumerMessage

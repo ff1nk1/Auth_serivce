@@ -9,17 +9,20 @@ use App\Models\ProductSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\Concerns\BindsInMemorySagaStepGuard;
+use Tests\Concerns\UsesFakeStripe;
 use Tests\TestCase;
 
 class StripeWebhookTest extends TestCase
 {
     use BindsInMemorySagaStepGuard;
     use RefreshDatabase;
+    use UsesFakeStripe;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->bindInMemorySagaStepGuard();
+        $this->useFakeStripe();
     }
 
     public function test_webhook_marks_confirmed_and_writes_order_paid(): void
@@ -120,9 +123,7 @@ class StripeWebhookTest extends TestCase
 
     private function postSignedWebhook(array $event)
     {
-        $payload = json_encode($event, JSON_THROW_ON_ERROR);
-        $timestamp = time();
-        $signature = hash_hmac('sha256', $timestamp.'.'.$payload, 'whsec_test_secret');
+        $signed = $this->signFakeStripeWebhook($event);
 
         return $this->call(
             'POST',
@@ -132,9 +133,9 @@ class StripeWebhookTest extends TestCase
             [],
             [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_Stripe-Signature' => 't='.$timestamp.',v1='.$signature,
+                'HTTP_Stripe-Signature' => $signed['header'],
             ],
-            $payload
+            $signed['payload']
         );
     }
 }

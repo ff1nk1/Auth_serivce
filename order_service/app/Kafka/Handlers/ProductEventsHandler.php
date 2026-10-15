@@ -4,12 +4,19 @@ namespace App\Kafka\Handlers;
 
 use App\Models\ProductSnapshot;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Junges\Kafka\Contracts\ConsumerMessage;
 
 class ProductEventsHandler
 {
     public function __invoke(ConsumerMessage $message): void
     {
+        if (! Schema::hasTable('product_snapshots')) {
+            Log::warning('Kafka: product_snapshots table missing; skipping until migrations run');
+
+            return;
+        }
+
         $headers = $message->getHeaders();
         $body = $message->getBody();
         $eventType = $headers['event-type'] ?? ($body['event'] ?? null);
