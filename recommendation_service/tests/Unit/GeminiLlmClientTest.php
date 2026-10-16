@@ -16,7 +16,7 @@ class GeminiLlmClientTest extends TestCase
         return new GeminiLlmClient(
             apiKey: 'test-key',
             baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-            chatModel: 'gemini-1.5-pro',
+            chatModel: 'gemini-3.8-flash',
             embeddingModel: 'text-embedding-004',
             temperature: 0.3,
             embeddingDimensions: 768,
@@ -61,7 +61,7 @@ class GeminiLlmClientTest extends TestCase
     public function test_chat_returns_candidate_text(): void
     {
         Http::fake([
-            '*/models/gemini-1.5-pro:generateContent' => Http::response([
+            '*/models/gemini-3.8-flash:generateContent' => Http::response([
                 'candidates' => [
                     [
                         'content' => [
@@ -95,7 +95,7 @@ class GeminiLlmClientTest extends TestCase
     public function test_extract_filters_parses_json_dto(): void
     {
         Http::fake([
-            '*/models/gemini-1.5-pro:generateContent' => Http::response([
+            '*/models/gemini-3.8-flash:generateContent' => Http::response([
                 'candidates' => [
                     [
                         'content' => [
@@ -152,7 +152,7 @@ class GeminiLlmClientTest extends TestCase
         $client = new GeminiLlmClient(
             apiKey: '',
             baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-            chatModel: 'gemini-1.5-pro',
+            chatModel: 'gemini-3.8-flash',
             embeddingModel: 'text-embedding-004',
             temperature: 0.3,
             embeddingDimensions: 768,

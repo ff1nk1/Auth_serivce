@@ -22,6 +22,9 @@ Route::post('/webhooks/stripe', [GatewayController::class, 'stripeWebhook']);
 Route::get('/search/autocomplete', [GatewayController::class, 'searchAutocomplete']);
 Route::get('/search', [GatewayController::class, 'search']);
 
+// Recommendations health — public probe
+Route::get('/recommendations/health', [GatewayController::class, 'recommendationsHealth']);
+
 Route::middleware(['ensure.token', 'auth:api'])->group(function () {
     Route::get('/user', [AuthController::class, 'getUser']);
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -34,6 +37,11 @@ Route::middleware(['ensure.token', 'auth:api'])->group(function () {
 
     // Customer orders — auth injects user_id when proxying
     Route::any('/orders/{path?}', [GatewayController::class, 'orders'])
+        ->where('path', '.*');
+
+    // Recommendations chat + conversations — inject user_id
+    Route::middleware('role:admin')->post('/recommendations/reindex', [GatewayController::class, 'recommendationsReindex']);
+    Route::any('/recommendations/{path?}', [GatewayController::class, 'recommendations'])
         ->where('path', '.*');
 
     // Notifications + admin orders + analytics — admin + analyst

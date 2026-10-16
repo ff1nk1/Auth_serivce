@@ -28,6 +28,7 @@ services:
       ORDER_SERVICE_URL: http://order_service_app:8004
       SEARCH_SERVICE_URL: http://search_service_app:8005
       ANALYTIC_SERVICE_URL: http://analytic_service_api:8006
+      RECOMMENDATION_SERVICE_URL: http://recommendation_service_app:8007
       SESSION_DOMAIN: null
       JWT_COOKIE_DOMAIN: ""
       APP_URL: http://auth_service_app:8001

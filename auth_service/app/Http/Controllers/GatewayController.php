@@ -116,6 +116,29 @@ class GatewayController extends Controller
         return $this->forwardService($request, 'search', 'autocomplete');
     }
 
+    public function recommendationsHealth(Request $request): Response
+    {
+        return $this->forwardService($request, 'recommendation', 'health');
+    }
+
+    public function recommendations(Request $request, string $path = ''): Response
+    {
+        $user = $request->user();
+
+        return $this->forwardService($request, 'recommendation', 'api', $path, [
+            'injectUser' => [
+                'id' => (int) $user->id,
+                'email' => $user->email,
+                'name' => $user->name,
+            ],
+        ]);
+    }
+
+    public function recommendationsReindex(Request $request): Response
+    {
+        return $this->forwardService($request, 'recommendation', 'reindex');
+    }
+
     /**
      * @param  array{
      *     mode?: 'json'|'html'|'raw',

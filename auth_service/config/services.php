@@ -76,4 +76,13 @@ return [
         ],
     ],
 
+    'recommendation' => [
+        'url' => env('RECOMMENDATION_SERVICE_URL', 'http://recommendation_service_app:8007'),
+        'paths' => [
+            'api' => '/api/recommendations',
+            'health' => '/api/recommendations/health',
+            'reindex' => '/api/recommendations/reindex',
+        ],
+    ],
+
 ];

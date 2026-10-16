@@ -19,6 +19,7 @@ import Orders from './Pages/Orders'
 import OrderDetail from './Pages/OrderDetail'
 import Cart from './Pages/Cart'
 import Search from './Pages/Search'
+import Assistant from './Pages/Assistant'
 
 import AdminLayout from './admin/AdminLayout'
 import AdminHub from './admin/AdminHub'
@@ -57,6 +58,7 @@ const router = createBrowserRouter(
 
       <Route element={<AppLayout />} loader={appLayoutLoader}>
         <Route path="/search" element={<Search />} />
+        <Route path="/assistant" element={<Assistant />} loader={requireAuth} />
         <Route path="/profile" element={<ProfilePage />} loader={requireAuth} />
         <Route path="/categories" element={<Categories />} loader={requireAuth} />
         <Route path="/categories/:slug" element={<CategoryProducts />} loader={requireAuth} />

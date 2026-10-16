@@ -9,6 +9,7 @@ export const catalogApi = api
 export const notificationApi = api
 export const orderApi = api
 export const analyticApi = api
+export const recommendationApi = api
 
 let isRefreshing = false
 let failedQueue = []

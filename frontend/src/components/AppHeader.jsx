@@ -28,6 +28,9 @@ export default function AppHeader({ user }) {
           <NavLink to="/search" className={navClassName}>
             Поиск
           </NavLink>
+          <NavLink to="/assistant" className={navClassName}>
+            ИИ помощник
+          </NavLink>
           <NavLink to="/stores" className={navClassName}>
             Магазины
           </NavLink>

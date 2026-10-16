@@ -60,11 +60,62 @@ services:
       DB_HOST: recommendation_service_db
       DB_PORT: 5432
       KAFKA_BROKERS: kafka:29092
+      KAFKA_CACHE_DRIVER: array
     depends_on:
       recommendation_db:
         condition: service_healthy
       recommendation_app:
         condition: service_started
+    networks:
+      - php_project_net
+
+  recommendation_kafka_product_consumer:
+    image: recommendation_service:local
+    pull_policy: never
+    container_name: recommendation_kafka_product_consumer
+    restart: unless-stopped
+    command: php artisan kafka:consume:product-events
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      DB_HOST: recommendation_service_db
+      DB_PORT: 5432
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CACHE_DRIVER: array
+    depends_on:
+      recommendation_db:
+        condition: service_healthy
+      recommendation_app:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    networks:
+      - php_project_net
+
+  recommendation_kafka_stock_consumer:
+    image: recommendation_service:local
+    pull_policy: never
+    container_name: recommendation_kafka_stock_consumer
+    restart: unless-stopped
+    command: php artisan kafka:consume:stock-events
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      DB_HOST: recommendation_service_db
+      DB_PORT: 5432
+      KAFKA_BROKERS: kafka:29092
+      KAFKA_CACHE_DRIVER: array
+    depends_on:
+      recommendation_db:
+        condition: service_healthy
+      recommendation_app:
+        condition: service_started
+      kafka:
+        condition: service_healthy
     networks:
       - php_project_net
 
