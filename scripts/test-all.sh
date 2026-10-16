@@ -20,7 +20,7 @@
 #     (real Stripe test-mode API)
 #   - analytic: pulls golang:1.23-bookworm if missing; joins network php_project_net
 #
-# Short names: auth catalog notification order search analytic
+# Short names: auth catalog notification order search analytic recommendation
 
 set -uo pipefail
 
@@ -148,7 +148,7 @@ run_analytic() {
 FILTER=("$@")
 
 # Validate filter names early
-VALID=(auth catalog notification order search analytic)
+VALID=(auth catalog notification order search analytic recommendation)
 for f in "${FILTER[@]+"${FILTER[@]}"}"; do
   ok=0
   for v in "${VALID[@]}"; do
@@ -187,6 +187,9 @@ fi
 if should_run analytic; then
   add_need analytic_clickhouse kafka
 fi
+if should_run recommendation; then
+  add_need recommendation_app recommendation_db
+fi
 
 # Dedupe NEED
 declare -A SEEN=()
@@ -219,6 +222,7 @@ if should_run catalog; then ensure_vendor catalog_service catalog_app || exit 1;
 if should_run notification; then ensure_vendor notification_service notification_app || exit 1; fi
 if should_run order; then ensure_vendor order_service order_app || exit 1; fi
 if should_run search; then ensure_vendor search_service search_app || exit 1; fi
+if should_run recommendation; then ensure_vendor recommendation_service recommendation_app || exit 1; fi
 
 TOTAL_START=$(date +%s)
 
@@ -241,6 +245,9 @@ if should_run search; then
 fi
 if should_run analytic; then
   run_analytic
+fi
+if should_run recommendation; then
+  run_php_suite recommendation recommendation_app php artisan test
 fi
 
 TOTAL_END=$(date +%s)

@@ -14,7 +14,7 @@
 # Analytic ClickHouse migrations run automatically when analytic_api /
 # analytic_consumers start — no artisan step here.
 #
-# Short names: auth notification search catalog order
+# Short names: auth notification search catalog order recommendation
 
 set -uo pipefail
 
@@ -85,7 +85,7 @@ run_step() {
 
 FILTER=("$@")
 
-VALID=(auth notification search catalog order)
+VALID=(auth notification search catalog order recommendation)
 for f in "${FILTER[@]+"${FILTER[@]}"}"; do
   ok=0
   for v in "${VALID[@]}"; do
@@ -122,6 +122,9 @@ if should_run order; then
   add_need order_app catalog_db kafka \
     order_kafka_outbox_worker order_kafka_stock_consumer \
     catalog_kafka_order_consumer catalog_kafka_outbox_worker
+fi
+if should_run recommendation; then
+  add_need recommendation_app recommendation_db
 fi
 
 declare -A SEEN=()
@@ -165,6 +168,9 @@ if should_run catalog; then
 fi
 if should_run order; then
   run_step order order_app php artisan migrate --seed --force
+fi
+if should_run recommendation; then
+  run_step recommendation recommendation_app php artisan migrate --force
 fi
 
 TOTAL_END=$(date +%s)

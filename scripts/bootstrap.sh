@@ -103,6 +103,7 @@ ENV_DIRS=(
   order_service
   search_service
   analytic_service
+  recommendation_service
   frontend
 )
 for d in "${ENV_DIRS[@]}"; do
@@ -115,6 +116,7 @@ PHP_ENV_DIRS=(
   notification_service
   order_service
   search_service
+  recommendation_service
 )
 for d in "${PHP_ENV_DIRS[@]}"; do
   ensure_app_key "$d" || true
@@ -131,7 +133,7 @@ fi
 log ""
 log "${BOLD}Building PHP app images (needed for compose run)...${NC}"
 if ! "${COMPOSE[@]}" build \
-  auth_app catalog_app notification_app order_app search_app; then
+  auth_app catalog_app notification_app order_app search_app recommendation_app; then
   log "${RED}ERROR:${NC} docker compose build of PHP apps failed"
   exit 1
 fi
@@ -143,6 +145,7 @@ ensure_vendor catalog_service catalog_app
 ensure_vendor notification_service notification_app
 ensure_vendor order_service order_app
 ensure_vendor search_service search_app
+ensure_vendor recommendation_service recommendation_app
 
 log ""
 if [[ $FAILED -ne 0 ]]; then

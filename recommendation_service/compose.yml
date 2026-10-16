@@ -1,0 +1,72 @@
+services:
+  recommendation_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        "php-project-php-base:8.5": "service:php-base"
+    image: recommendation_service:local
+    pull_policy: never
+    container_name: recommendation_service_app
+    restart: unless-stopped
+    expose:
+      - "8007"
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      DB_HOST: recommendation_service_db
+      DB_PORT: 5432
+      KAFKA_BROKERS: kafka:29092
+      APP_URL: http://recommendation_service_app:8007
+    depends_on:
+      recommendation_db:
+        condition: service_healthy
+    networks:
+      - php_project_net
+
+  recommendation_db:
+    image: pgvector/pgvector:pg16
+    container_name: recommendation_service_db
+    restart: unless-stopped
+    ports:
+      - "5437:5432"
+    environment:
+      POSTGRES_DB: recommendation_db
+      POSTGRES_USER: laravel
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - recommendation_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U laravel -d recommendation_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - php_project_net
+
+  recommendation_scheduler:
+    image: recommendation_service:local
+    pull_policy: never
+    container_name: recommendation_scheduler
+    restart: unless-stopped
+    command: php artisan schedule:work
+    volumes:
+      - .:/var/www
+    env_file:
+      - .env
+    environment:
+      DB_HOST: recommendation_service_db
+      DB_PORT: 5432
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      recommendation_db:
+        condition: service_healthy
+      recommendation_app:
+        condition: service_started
+    networks:
+      - php_project_net
+
+volumes:
+  recommendation_pgdata:

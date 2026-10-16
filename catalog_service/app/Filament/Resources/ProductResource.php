@@ -18,8 +18,10 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Arr;
@@ -87,6 +89,23 @@ class ProductResource extends Resource
                 TextColumn::make('price')->sortable(),
                 TextColumn::make('store.name')->label('Store')->placeholder('—'),
                 TextColumn::make('category_id')->label('Category'),
+                ToggleColumn::make('is_published')
+                    ->label('AI')
+                    ->tooltip(fn (Product $record): string => $record->is_published
+                        ? 'Visible for AI — click to unpublish'
+                        : 'Hidden from AI — click to publish')
+                    ->updateStateUsing(function (Product $record): bool {
+                        $updated = app(ProductService::class)->togglePublished($record);
+
+                        Notification::make()
+                            ->title($updated->is_published
+                                ? 'Product published for AI'
+                                : 'Product unpublished from AI')
+                            ->success()
+                            ->send();
+
+                        return (bool) $updated->is_published;
+                    }),
             ])
             ->filters([
                 SelectFilter::make('store_id')

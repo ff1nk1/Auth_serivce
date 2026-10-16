@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LoginRequest;
 use App\Http\Requests\PasswordChangeRequest;
 use App\Http\Requests\RegistrationRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Services\Auth\AuthService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
@@ -31,14 +33,9 @@ class AuthController extends Controller
         return response()->json($user);
     }
 
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
-
-        $tokens = $this->authService->login($credentials);
+        $tokens = $this->authService->login($request->validated());
 
         return $this->tokenResponse($tokens['access_token'], $tokens['refresh_token']);
     }
@@ -76,16 +73,10 @@ class AuthController extends Controller
         return response()->json(['user' => Auth::guard('api')->user()]);
     }
 
-    public function editData(Request $request)
+    public function editData(UpdateProfileRequest $request)
     {
         $user = $request->user();
-
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'number' => 'sometimes|string|max:20',
-        ]);
-
-        $user->update($validated);
+        $user->update($request->validated());
 
         return response()->json([
             'message' => 'Данные успешно обновлены',

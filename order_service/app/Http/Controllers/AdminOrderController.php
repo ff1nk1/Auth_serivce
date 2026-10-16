@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AdminListOrdersRequest;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class AdminOrderController extends Controller
 {
@@ -12,11 +12,9 @@ class AdminOrderController extends Controller
         private OrderService $orders
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(AdminListOrdersRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-        ]);
+        $validated = $request->validated();
 
         $paginator = $this->orders->listAll((int) ($validated['per_page'] ?? 15));
 

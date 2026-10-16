@@ -2,20 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\GetUploadUrlRequest;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class UploadController extends Controller
 {
-    public function getUploadUrl(Request $request)
+    public function getUploadUrl(GetUploadUrlRequest $request)
     {
-        $request->validate([
-            'filename' => 'required|string',
-            'content_type' => 'required|string',
-        ]);
+        $validated = $request->validated();
 
-        $extension = pathinfo($request->filename, PATHINFO_EXTENSION);
+        $extension = pathinfo($validated['filename'], PATHINFO_EXTENSION);
         $fileName = Str::uuid().'.'.$extension;
         $path = 'uploads/'.$fileName;
 
@@ -24,7 +21,7 @@ class UploadController extends Controller
         $internalUrl = $s3Disk->temporaryUploadUrl(
             $path,
             now()->addMinutes(5),
-            ['ContentType' => $request->content_type]
+            ['ContentType' => $validated['content_type']]
         );
 
         if (is_array($internalUrl)) {

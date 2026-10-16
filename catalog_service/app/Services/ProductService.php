@@ -59,6 +59,22 @@ class ProductService
         $this->publishToTopic('product.deleted', $productData);
     }
 
+    public function togglePublished(Product $product): Product
+    {
+        $product->is_published = ! (bool) $product->is_published;
+        $product->save();
+
+        $product = $product->fresh(['store', 'category', 'attributes']) ?? $product;
+
+        $this->clearProductCache();
+        $this->publishToTopic(
+            $product->is_published ? 'product.published' : 'product.unpublished',
+            $product
+        );
+
+        return $product;
+    }
+
     public function clearProductCache(): void
     {
         Cache::tags(['products'])->flush();

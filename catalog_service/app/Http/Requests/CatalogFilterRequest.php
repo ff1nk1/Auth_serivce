@@ -22,7 +22,8 @@ class CatalogFilterRequest extends FormRequest
             'search'    => 'nullable|string|max:100',
             'min_price' => 'nullable|numeric|min:0',
             // max_price не может быть меньше min_price
-            'max_price' => 'nullable|numeric|min:0|gte:min_price', 
+            'max_price' => 'nullable|numeric|min:0|gte:min_price',
+            'status'    => 'nullable|string|in:in_stock',
             'sort'      => 'nullable|string|in:new,price_asc,price_desc',
         ];
     }

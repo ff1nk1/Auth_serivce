@@ -20,4 +20,5 @@ include:
   - path: order_service/compose.yml
   - path: search_service/compose.yml
   - path: analytic_service/compose.yml
+  - path: recommendation_service/compose.yml
   - path: frontend/compose.yml

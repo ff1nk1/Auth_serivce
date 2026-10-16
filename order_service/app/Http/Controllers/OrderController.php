@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ListOrdersRequest;
+use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\UserScopedOrderRequest;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
@@ -14,12 +16,9 @@ class OrderController extends Controller
         private PaymentService $payments,
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListOrdersRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
-        ]);
+        $validated = $request->validated();
 
         $paginator = $this->orders->listForUser(
             (int) $validated['user_id'],
@@ -29,64 +28,38 @@ class OrderController extends Controller
         return response()->json($paginator);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreOrderRequest $request): JsonResponse
     {
-        $idempotencyKey = $request->header('Idempotency-Key');
-        if (! is_string($idempotencyKey) || $idempotencyKey === '') {
-            return response()->json([
-                'message' => 'Idempotency-Key header is required.',
-            ], 422);
-        }
-
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'min:1'],
-            'email' => ['required', 'email'],
-            'name' => ['required', 'string', 'max:255'],
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'integer', 'min:1'],
-            'items.*.quantity' => ['required', 'integer', 'min:1'],
-        ]);
+        $validated = $request->validated();
 
         $result = $this->orders->create(
             (int) $validated['user_id'],
             $validated['email'],
             $validated['name'],
             $validated['items'],
-            $idempotencyKey
+            $request->idempotencyKey()
         );
 
         return response()->json($result['body'], $result['status']);
     }
 
-    public function show(Request $request, int $id): JsonResponse
+    public function show(UserScopedOrderRequest $request, int $id): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'min:1'],
-        ]);
-
-        $order = $this->orders->findForUser($id, (int) $validated['user_id']);
+        $order = $this->orders->findForUser($id, (int) $request->validated()['user_id']);
 
         return response()->json($this->orders->serializeOrder($order));
     }
 
-    public function cancel(Request $request, int $id): JsonResponse
+    public function cancel(UserScopedOrderRequest $request, int $id): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'min:1'],
-        ]);
-
-        $order = $this->orders->cancelForUser($id, (int) $validated['user_id']);
+        $order = $this->orders->cancelForUser($id, (int) $request->validated()['user_id']);
 
         return response()->json($this->orders->serializeOrder($order));
     }
 
-    public function pay(Request $request, int $id): JsonResponse
+    public function pay(UserScopedOrderRequest $request, int $id): JsonResponse
     {
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'min:1'],
-        ]);
-
-        $result = $this->payments->createCheckoutForUser($id, (int) $validated['user_id']);
+        $result = $this->payments->createCheckoutForUser($id, (int) $request->validated()['user_id']);
 
         return response()->json($result);
     }

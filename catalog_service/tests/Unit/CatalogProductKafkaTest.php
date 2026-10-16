@@ -165,4 +165,66 @@ class CatalogProductKafkaTest extends TestCase
                     && ($context['product_id'] ?? null) === $product->id;
             });
     }
+
+    public function test_new_product_defaults_to_published(): void
+    {
+        $product = Product::factory()->create();
+
+        $this->assertTrue($product->fresh()->is_published);
+        $this->assertDatabaseHas('products', [
+            'id' => $product->id,
+            'is_published' => true,
+        ]);
+    }
+
+    public function test_toggle_published_emits_unpublished_then_published(): void
+    {
+        Kafka::fake();
+
+        $product = Product::factory()->create([
+            'name' => 'AI Phone',
+            'description' => 'A phone for embeddings',
+            'is_published' => true,
+        ]);
+        $product->attributes()->create([
+            'name' => 'Color',
+            'value' => 'Blue',
+        ]);
+
+        $unpublished = app(ProductService::class)->togglePublished($product);
+
+        $this->assertFalse($unpublished->is_published);
+        Kafka::assertPublishedOn('product.unpublished', null, function ($message) use ($product) {
+            $headers = $message->getHeaders();
+            $body = $message->getBody();
+            $data = $body['data'] ?? [];
+
+            return ($headers['event-type'] ?? null) === 'product.unpublished'
+                && ($headers['source'] ?? null) === 'catalog-service'
+                && ($body['event'] ?? null) === 'product.unpublished'
+                && ($data['id'] ?? null) === $product->id
+                && ($data['is_published'] ?? null) === false
+                && ($data['name'] ?? null) === 'AI Phone'
+                && ($data['description'] ?? null) === 'A phone for embeddings'
+                && ($data['store_id'] ?? null) === $product->store_id
+                && collect($data['attributes'] ?? [])->contains(
+                    fn (array $attr): bool => ($attr['name'] ?? null) === 'Color'
+                        && ($attr['value'] ?? null) === 'Blue'
+                )
+                && (string) $message->getKey() === (string) $product->id;
+        });
+
+        $published = app(ProductService::class)->togglePublished($unpublished);
+
+        $this->assertTrue($published->is_published);
+        Kafka::assertPublishedOn('product.published', null, function ($message) use ($product) {
+            $body = $message->getBody();
+            $data = $body['data'] ?? [];
+
+            return ($message->getHeaders()['event-type'] ?? null) === 'product.published'
+                && ($body['event'] ?? null) === 'product.published'
+                && ($data['id'] ?? null) === $product->id
+                && ($data['is_published'] ?? null) === true;
+        });
+    }
 }

@@ -23,6 +23,7 @@ class Product extends Model
         'description',
         'image_url',
         'price',
+        'is_published',
     ];
 
     /**
@@ -32,6 +33,7 @@ class Product extends Model
      */
     protected $casts = [
         'price' => 'decimal:2',
+        'is_published' => 'boolean',
     ];
 
     /**
