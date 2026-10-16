@@ -2,8 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Mail\MailableRegistry;
 use App\Models\EmailLog;
-use App\Services\NotificationService;
+use App\Services\MailDeliveryService;
 use Illuminate\Mail\PendingMail;
 use Illuminate\Support\Facades\Mail;
 use Mockery;
@@ -24,26 +25,19 @@ class EmailLogMongoIntegrationTest extends TestCase
         parent::tearDown();
     }
 
-    /**
-     * 1. Проверяем, что создается начальная запись в MongoDB со статусом 'pending'
-     * и последующий переход в статус 'sent'.
-     */
-    public function test_it_persists_initial_pending_state_and_updates_to_sent_in_mongodb()
+    public function test_it_persists_initial_pending_state_and_updates_to_sent_in_mongodb(): void
     {
         Mail::fake();
 
-        $service = new NotificationService;
-        $payload = [
+        $result = app(MailDeliveryService::class)->sendMailWithRetry([
             'email' => 'mongo_user@example.com',
             'name' => 'Mongo Test User',
-        ];
-
-        $result = $service->sendWelcomeMailWithRetry($payload);
+        ], 'user.registered');
 
         /** @var EmailLog $emailLog */
         $emailLog = $result['emailLog'];
 
-        $this->assertNotNull($emailLog->_id); // У моделей MongoDB первичный ключ - _id
+        $this->assertNotNull($emailLog->_id);
         $this->assertEquals('mongo_user@example.com', $emailLog->email);
 
         $this->assertDatabaseHas('email_logs', [
@@ -59,14 +53,10 @@ class EmailLogMongoIntegrationTest extends TestCase
         $this->assertNotNull($emailLog->time);
     }
 
-    /**
-     * 2. Проверяем изменение статуса на 'failed' и сохранение сообщения об ошибке в MongoDB (метод send_email).
-     */
-    public function test_it_updates_status_to_failed_and_stores_error_message_in_mongodb()
+    public function test_it_updates_status_to_failed_and_stores_error_message_in_mongodb(): void
     {
-        $maxRetries = NotificationService::MAX_RETRIES;
+        $maxRetries = MailDeliveryService::MAX_RETRIES;
 
-        // Симулируем сбой отправки на всех попытках (та же retry-логика, что при первичной отправке)
         $pendingMailMock = Mockery::mock(PendingMail::class);
         $pendingMailMock->shouldReceive('send')
             ->times($maxRetries)
@@ -79,11 +69,11 @@ class EmailLogMongoIntegrationTest extends TestCase
 
         $logInMongo = EmailLog::factory()->create([
             'email' => 'fail_user@example.com',
-            'status' => 'pending',
+            'status' => 'failed',
+            'event_type' => 'user.registered',
         ]);
 
-        $service = new NotificationService;
-        $result = $service->send_email($logInMongo);
+        $result = app(MailDeliveryService::class)->resend($logInMongo);
 
         $this->assertFalse($result);
 
@@ -99,14 +89,10 @@ class EmailLogMongoIntegrationTest extends TestCase
         ], 'mongodb');
     }
 
-    /**
-     * 3. Проверяем инкремент счётчика 'retries' в MongoDB при промежуточных сбоях.
-     */
-    public function test_it_increments_retries_count_in_mongodb_on_failures()
+    public function test_it_increments_retries_count_in_mongodb_on_failures(): void
     {
-        $maxRetries = NotificationService::MAX_RETRIES;
+        $maxRetries = MailDeliveryService::MAX_RETRIES;
 
-        // Мокаем постоянный сбой почты
         $pendingMailMock = Mockery::mock(PendingMail::class);
         $pendingMailMock->shouldReceive('send')
             ->times($maxRetries)
@@ -117,30 +103,27 @@ class EmailLogMongoIntegrationTest extends TestCase
             ->with('retry_mongo@example.com')
             ->andReturn($pendingMailMock);
 
-        /** @var NotificationService&MockInterface $service */
-        $service = Mockery::mock(NotificationService::class)->makePartial();
+        /** @var MailDeliveryService&MockInterface $service */
+        $service = Mockery::mock(MailDeliveryService::class, [new MailableRegistry])->makePartial();
         $service->shouldAllowMockingProtectedMethods();
         $service->shouldReceive('sleepInTest')->times($maxRetries - 1);
 
-        $payload = ['email' => 'retry_mongo@example.com', 'name' => 'Retry User'];
-
-        $result = $service->sendWelcomeMailWithRetry($payload);
+        $result = $service->sendMailWithRetry([
+            'email' => 'retry_mongo@example.com',
+            'name' => 'Retry User',
+        ], 'user.registered');
 
         /** @var EmailLog $emailLog */
         $emailLog = $result['emailLog'];
-
-        // Запрашиваем свежие данные из MongoDB
         $emailLog->refresh();
 
-        // Проверяем, что в Mongo зафиксировались все попытки
         $this->assertEquals($maxRetries, $emailLog->retries);
-        $this->assertEquals('pending', $emailLog->status);
+        $this->assertEquals('failed', $emailLog->status);
 
-        // Проверяем актуальное состояние в Mongo-коллекции
         $this->assertDatabaseHas('email_logs', [
             '_id' => $emailLog->_id,
             'retries' => $maxRetries,
-            'status' => 'pending',
+            'status' => 'failed',
         ], 'mongodb');
     }
 }

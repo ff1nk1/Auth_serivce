@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Middleware\AddTokenFromCookie;
 use App\Http\Middleware\EnsureValidAccessToken;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Auth\AuthenticationException;
@@ -39,7 +38,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => RoleMiddleware::class,
-            'cookie.token' => AddTokenFromCookie::class,
             'ensure.token' => EnsureValidAccessToken::class,
         ]);
 
@@ -48,10 +46,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(
             before: AuthenticatesRequests::class,
             prepend: EnsureValidAccessToken::class,
-        );
-        $middleware->prependToPriorityList(
-            before: EnsureValidAccessToken::class,
-            prepend: AddTokenFromCookie::class,
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {

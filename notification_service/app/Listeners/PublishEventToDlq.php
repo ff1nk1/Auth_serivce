@@ -2,19 +2,19 @@
 
 namespace App\Listeners;
 
-use App\Events\OrderEventMovedToDlq;
+use App\Events\KafkaEventMovedToDlq;
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Facades\Kafka;
 
-class PublishOrderEventToDlq
+class PublishEventToDlq
 {
-    public function handle(OrderEventMovedToDlq $event): void
+    public function handle(KafkaEventMovedToDlq $event): void
     {
         $message = $event->message;
 
         try {
             Kafka::publish(config('kafka.brokers', 'kafka:29092'))
-                ->onTopic('order.events.dlq')
+                ->onTopic($event->dlqTopic)
                 ->withKafkaKey((string) $message->getKey())
                 ->withHeaders(array_merge($message->getHeaders() ?? [], [
                     'dlq-reason' => $event->errorMessage,
@@ -23,7 +23,7 @@ class PublishOrderEventToDlq
                 ->withBody($message->getBody())
                 ->send();
 
-            Log::error('Сообщение не обработано и перенаправлено в DLQ (order.events.dlq)', [
+            Log::error("Сообщение не обработано и перенаправлено в DLQ ({$event->dlqTopic})", [
                 'email' => $event->email,
                 'error' => $event->errorMessage,
             ]);

@@ -2,10 +2,8 @@
 
 namespace App\Providers;
 
-use App\Events\OrderEventMovedToDlq;
-use App\Events\UserEventMovedToDlq;
-use App\Listeners\PublishOrderEventToDlq;
-use App\Listeners\PublishUserEventToDlq;
+use App\Events\KafkaEventMovedToDlq;
+use App\Listeners\PublishEventToDlq;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -14,8 +12,7 @@ class EventServiceProvider extends ServiceProvider
      * @var array<class-string, list<class-string>>
      */
     protected $listen = [
-        OrderEventMovedToDlq::class => [PublishOrderEventToDlq::class],
-        UserEventMovedToDlq::class => [PublishUserEventToDlq::class],
+        KafkaEventMovedToDlq::class => [PublishEventToDlq::class],
     ];
 
     public function shouldDiscoverEvents(): bool

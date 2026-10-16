@@ -3,6 +3,7 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -20,5 +21,7 @@ abstract class TestCase extends BaseTestCase
         $_ENV['DB_HOST'] = $_SERVER['DB_HOST'] = '';
 
         parent::setUp();
+
+        $this->withoutMiddleware(ThrottleRequests::class);
     }
 }

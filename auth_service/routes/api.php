@@ -6,11 +6,14 @@ use App\Http\Controllers\GatewayController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/registration', [AuthController::class, 'registration']);
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:5,1');
+    Route::post('/registration', [AuthController::class, 'register'])
+        ->middleware('throttle:5,1');
 });
 
-Route::post('/refresh', [AuthController::class, 'refresh']);
+Route::post('/refresh', [AuthController::class, 'refresh'])
+    ->middleware('throttle:30,1');
 
 // Stripe webhook — no JWT (external callback)
 Route::post('/webhooks/stripe', [GatewayController::class, 'stripeWebhook']);
@@ -19,11 +22,11 @@ Route::post('/webhooks/stripe', [GatewayController::class, 'stripeWebhook']);
 Route::get('/search/autocomplete', [GatewayController::class, 'searchAutocomplete']);
 Route::get('/search', [GatewayController::class, 'search']);
 
-Route::middleware(['ensure.token', 'cookie.token', 'auth:api'])->group(function () {
-    Route::get('/user', [AuthController::class, 'get_user']);
+Route::middleware(['ensure.token', 'auth:api'])->group(function () {
+    Route::get('/user', [AuthController::class, 'getUser']);
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::patch('/profile', [AuthController::class, 'editData']);
-    Route::patch('/profile/password', [AuthController::class, 'change_password']);
+    Route::patch('/profile', [AuthController::class, 'updateProfile']);
+    Route::patch('/profile/password', [AuthController::class, 'changePassword']);
 
     // Storefront catalog — any authenticated role
     Route::any('/catalog/{path?}', [GatewayController::class, 'catalog'])

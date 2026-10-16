@@ -3,35 +3,25 @@
 namespace App\Console\Commands;
 
 use App\Kafka\Handlers\OrderEventsHandler;
-use Illuminate\Console\Command;
-use Junges\Kafka\Facades\Kafka;
 
-class KafkaConsumeOrderEvents extends Command
+class KafkaConsumeOrderEvents extends AbstractKafkaConsumeCommand
 {
     protected $signature = 'kafka:consume:order-events';
 
     protected $description = 'Консьюмер для топика order.events';
 
-    public function handle(): int
+    protected function topic(): string
     {
-        $this->info('Запуск консьюмера для топика order.events...');
+        return (string) config('kafka.topics.order_events', 'order.events');
+    }
 
-        $consumer = Kafka::consumer(['order.events'])
-            ->withBrokers(config('kafka.brokers', 'kafka:29092'))
-            ->withConsumerGroupId('notification-service-order-v1')
-            ->withHandler(app(OrderEventsHandler::class))
-            ->withAutoCommit()
-            ->withOptions([
-                'auto.offset.reset' => 'earliest',
-            ])
-            ->build();
+    protected function groupId(): string
+    {
+        return (string) config('kafka.consumer_groups.order', 'notification-service-order-v1');
+    }
 
-        try {
-            $consumer->consume();
-        } catch (\Throwable $e) {
-            $this->error('ОШИБКА KAFKA: '.$e->getMessage());
-        }
-
-        return self::SUCCESS;
+    protected function handlerClass(): string
+    {
+        return OrderEventsHandler::class;
     }
 }

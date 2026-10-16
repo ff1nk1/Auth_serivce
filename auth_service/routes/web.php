@@ -8,7 +8,7 @@ Route::get('/', function () {
 });
 
 // Catalog Filament panel — JWT + admin role, then HTML proxy with identity headers
-Route::middleware(['ensure.token', 'cookie.token', 'auth:api', 'role:admin'])->group(function () {
+Route::middleware(['ensure.token', 'auth:api', 'role:admin'])->group(function () {
     Route::any('/admin-catalog/{path?}', [GatewayController::class, 'catalogAdminPanel'])
         ->where('path', '.*');
 });

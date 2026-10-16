@@ -7,41 +7,44 @@ use App\Http\Requests\PasswordChangeRequest;
 use App\Http\Requests\RegistrationRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Services\Auth\AuthService;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Services\Auth\TokenCookieService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\Response;
 
 class AuthController extends Controller
 {
-    use AuthorizesRequests;
-
     public function __construct(
-        private AuthService $authService
+        private AuthService $authService,
+        private TokenCookieService $tokenCookies,
     ) {}
 
-    public function registration(RegistrationRequest $request)
+    public function register(RegistrationRequest $request): JsonResponse
     {
         $user = $this->authService->register($request->validated());
 
         return response()->json($user, 201);
     }
 
-    public function get_user(Request $request)
+    public function getUser(Request $request): JsonResponse
     {
         $user = $request->user()->loadMissing('role');
 
         return response()->json($user);
     }
 
-    public function login(LoginRequest $request)
+    public function login(LoginRequest $request): JsonResponse
     {
         $tokens = $this->authService->login($request->validated());
 
-        return $this->tokenResponse($tokens['access_token'], $tokens['refresh_token']);
+        return $this->tokenCookies->jsonWithTokens(
+            $tokens['access_token'],
+            $tokens['refresh_token'],
+        );
     }
 
-    public function refresh(Request $request)
+    public function refresh(Request $request): JsonResponse
     {
         $oldRefreshToken = $request->cookie('refresh_token');
         $tokens = $this->authService->refreshTokens($oldRefreshToken);
@@ -52,29 +55,25 @@ class AuthController extends Controller
             ], 401);
         }
 
-        return $this->tokenResponse($tokens['access_token'], $tokens['refresh_token']);
+        return $this->tokenCookies->jsonWithTokens(
+            $tokens['access_token'],
+            $tokens['refresh_token'],
+        );
     }
 
-    public function logout(Request $request)
+    public function logout(Request $request): Response
     {
         $this->authService->logout(
-            $request->cookie('access_token') ?? $request->bearerToken(),
-            $request->cookie('refresh_token')
+            $this->accessTokenFromRequest($request),
+            $this->refreshTokenFromRequest($request),
         );
 
-        $domain = config('jwt.cookie_domain');
-
-        return response()->json(['message' => 'Выход выполнен.'])
-            ->withoutCookie('access_token', '/', $domain)
-            ->withoutCookie('refresh_token', '/', $domain);
+        return $this->tokenCookies->clear(
+            response()->json(['message' => 'Выход выполнен.'])
+        );
     }
 
-    public function profile()
-    {
-        return response()->json(['user' => Auth::guard('api')->user()]);
-    }
-
-    public function editData(UpdateProfileRequest $request)
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
         $user = $request->user();
         $user->update($request->validated());
@@ -85,35 +84,44 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Формирование ответа с HttpOnly куками
-     */
-    private function tokenResponse(string $accessToken, string $refreshToken)
-    {
-        $refreshTtl = (int) config('jwt.refresh_ttl');
-        $cookieMinutes = (int) ceil($refreshTtl / 60);
-        $secure = (bool) config('jwt.cookie_secure');
-        $domain = config('jwt.cookie_domain');
-
-        return response()->json(['message' => 'Успешно.'])
-            ->cookie('access_token', $accessToken, $cookieMinutes, '/', $domain, $secure, true, false, 'lax')
-            ->cookie('refresh_token', $refreshToken, $cookieMinutes, '/', $domain, $secure, true, false, 'lax');
-    }
-
-    public function change_password(PasswordChangeRequest $request)
+    public function changePassword(PasswordChangeRequest $request): Response
     {
         $data = $request->validated();
+        $accessToken = $this->accessTokenFromRequest($request);
+
         try {
-            DB::transaction(function () use ($data) {
-                $user = $this->authService->check_password(auth()->id(), $data['current_password']);
+            $user = DB::transaction(function () use ($data) {
+                $user = $this->authService->verifyPassword(auth()->id(), $data['current_password']);
+                $this->authService->archivePassword($user);
+                $this->authService->setNewPassword($user, $data['new_password']);
 
-                $this->authService->set_psw_as_deleted($user);
-                $this->authService->set_new_password($user, $data['new_password']);
+                return $user;
             });
-
-            return response()->json(['message' => 'Пароль успешно изменён']);
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
+
+        $this->authService->revokeAllSessionsForUser($user, $accessToken);
+
+        return $this->tokenCookies->clear(
+            response()->json(['message' => 'Пароль успешно изменён'])
+        );
+    }
+
+    private function accessTokenFromRequest(Request $request): ?string
+    {
+        $token = $request->cookie('access_token')
+            ?? $request->cookies->get('access_token')
+            ?? $request->bearerToken();
+
+        return is_string($token) && $token !== '' ? $token : null;
+    }
+
+    private function refreshTokenFromRequest(Request $request): ?string
+    {
+        $token = $request->cookie('refresh_token')
+            ?? $request->cookies->get('refresh_token');
+
+        return is_string($token) && $token !== '' ? $token : null;
     }
 }

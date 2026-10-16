@@ -5,7 +5,7 @@ namespace App\Events;
 use Illuminate\Foundation\Events\Dispatchable;
 use Junges\Kafka\Contracts\ConsumerMessage;
 
-class UserEventMovedToDlq
+class KafkaEventMovedToDlq
 {
     use Dispatchable;
 
@@ -13,5 +13,6 @@ class UserEventMovedToDlq
         public readonly ConsumerMessage $message,
         public readonly string $errorMessage,
         public readonly string $email,
+        public readonly string $dlqTopic,
     ) {}
 }

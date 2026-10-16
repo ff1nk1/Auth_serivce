@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\User;
 use App\Services\Auth\AuthService;
 use App\Services\Auth\JwtService;
+use App\Services\Auth\TokenCookieService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,12 +14,16 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * If access_token is missing/expired but refresh_token is valid, silently refresh
  * and attach new cookies to the outgoing response.
+ *
+ * Also sets the api guard user from cookie/bearer (via JwtService) so auth:api works
+ * without a separate cookie→Authorization middleware.
  */
 class EnsureValidAccessToken
 {
     public function __construct(
         private AuthService $authService,
         private JwtService $jwtService,
+        private TokenCookieService $tokenCookies,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -61,45 +66,11 @@ class EnsureValidAccessToken
         /** @var Response $response */
         $response = $next($request);
 
-        return $this->attachTokenCookies($response, $tokens['access_token'], $tokens['refresh_token']);
+        return $this->tokenCookies->attach($response, $tokens['access_token'], $tokens['refresh_token']);
     }
 
     private function setApiUser(User $user): void
     {
         Auth::guard('api')->setUser($user);
-    }
-
-    private function attachTokenCookies(Response $response, string $accessToken, string $refreshToken): Response
-    {
-        $refreshTtl = (int) config('jwt.refresh_ttl');
-        $cookieMinutes = (int) ceil($refreshTtl / 60);
-        $secure = (bool) config('jwt.cookie_secure');
-        $domain = config('jwt.cookie_domain');
-
-        $response->headers->setCookie(cookie(
-            'access_token',
-            $accessToken,
-            $cookieMinutes,
-            '/',
-            $domain,
-            $secure,
-            true,
-            false,
-            'lax'
-        ));
-
-        $response->headers->setCookie(cookie(
-            'refresh_token',
-            $refreshToken,
-            $cookieMinutes,
-            '/',
-            $domain,
-            $secure,
-            true,
-            false,
-            'lax'
-        ));
-
-        return $response;
     }
 }

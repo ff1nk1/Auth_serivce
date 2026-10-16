@@ -100,4 +100,44 @@ class ProxyHtmlMultipartTest extends TestCase
                 && $httpRequest->body() === $payload;
         });
     }
+
+    public function test_forward_html_strips_jwt_cookies_from_upstream(): void
+    {
+        Http::fake([
+            '*' => Http::response('ok', 200, ['Content-Type' => 'text/html']),
+        ]);
+
+        $request = Request::create(
+            '/admin-catalog',
+            'GET',
+            [],
+            [
+                'access_token' => 'jwt-access',
+                'refresh_token' => 'jwt-refresh',
+                'catalogservice-session' => 'filament-session',
+            ],
+            [],
+            [
+                'HTTP_HOST' => 'app.localhost',
+                'HTTP_ACCEPT' => 'text/html',
+                'HTTP_COOKIE' => 'access_token=jwt-access; refresh_token=jwt-refresh; catalogservice-session=filament-session',
+            ],
+        );
+
+        app(ProxyService::class)->forwardHtml(
+            $request,
+            'http://catalog.test',
+            '/admin-catalog',
+            ['id' => 1, 'role' => 'admin'],
+        );
+
+        Http::assertSent(function ($httpRequest) {
+            $cookie = $httpRequest->header('Cookie')[0] ?? '';
+
+            return str_contains($httpRequest->url(), '/admin-catalog')
+                && str_contains($cookie, 'catalogservice-session=filament-session')
+                && ! str_contains($cookie, 'access_token=')
+                && ! str_contains($cookie, 'refresh_token=');
+        });
+    }
 }

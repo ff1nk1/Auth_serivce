@@ -75,8 +75,8 @@ class AuthServiceTest extends TestCase
         $newTokens = $this->authService->refreshTokens($oldRefreshToken);
 
         $this->assertNotNull($newTokens);
-        $this->assertFalse(Redis::exists("refresh_token:{$oldHash}") > 0);
-        $this->assertTrue(Redis::exists("refresh_token:blacklist:{$oldHash}") > 0);
+        $this->assertSame(0, (int) Redis::exists("refresh_token:{$oldHash}"));
+        $this->assertGreaterThan(0, (int) Redis::exists("refresh_token:blacklist:{$oldHash}"));
 
         $newHash = hash('sha256', $newTokens['refresh_token']);
         $this->assertTrue(Redis::exists("refresh_token:{$newHash}") > 0);

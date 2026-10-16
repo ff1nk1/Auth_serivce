@@ -2,12 +2,24 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string $password
+ * @property string|null $number
+ * @property int|null $role_id
+ * @property string|null $deleted_password
+ * @property-read Role|null $role
+ *
+ * @method static UserFactory factory($count = null, $state = [])
+ */
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -34,8 +46,14 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
+     * @return BelongsTo<Role, $this>
+     */
+    public function role(): BelongsTo
+    {
+        return $this->belongsTo(Role::class);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -44,12 +62,5 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
-    }
-
-    // User.php
-
-    public function role()
-    {
-        return $this->belongsTo(Role::class);
     }
 }

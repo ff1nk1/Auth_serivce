@@ -5,18 +5,14 @@ namespace Database\Factories;
 use App\Models\EmailLog;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<EmailLog>
+ */
 class EmailLogFactory extends Factory
 {
-    /**
-     * Имя связанной с фабрикой модели.
-     *
-     * @var string
-     */
     protected $model = EmailLog::class;
 
     /**
-     * Определить состояние модели по умолчанию.
-     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -39,10 +35,7 @@ class EmailLogFactory extends Factory
         ];
     }
 
-    /**
-     * Состояние: Письмо успешно отправлено.
-     */
-    public function sent(): Factory
+    public function sent(): static
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'sent',
@@ -50,10 +43,7 @@ class EmailLogFactory extends Factory
         ]);
     }
 
-    /**
-     * Состояние: Отправка завершилась ошибкой.
-     */
-    public function failed(string $errorMessage = 'Connection timeout'): Factory
+    public function failed(string $errorMessage = 'Connection timeout'): static
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'failed',
@@ -61,15 +51,12 @@ class EmailLogFactory extends Factory
         ]);
     }
 
-    /**
-     * Состояние: Сообщение перемещено в Dead Letter Queue (DLQ).
-     */
-    public function dlq(): Factory
+    public function dlq(): static
     {
         return $this->state(fn (array $attributes) => [
             'status' => 'failed',
             'moved_to_dlq' => true,
-            'retries' => 3, // например, максимальное число попыток
+            'retries' => 3,
             'error_message' => 'Max retries exhausted',
         ]);
     }

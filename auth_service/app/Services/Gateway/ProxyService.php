@@ -243,12 +243,47 @@ class ProxyService
         $headers = [];
 
         foreach (self::HTML_PASSTHROUGH_HEADERS as $name) {
-            if ($request->headers->has($name)) {
-                $headers[$name] = (string) $request->header($name);
+            if (! $request->headers->has($name)) {
+                continue;
             }
+
+            if ($name === 'Cookie') {
+                $stripped = $this->stripAuthCookiesFromHeader((string) $request->header('Cookie'));
+                if ($stripped !== '') {
+                    $headers[$name] = $stripped;
+                }
+
+                continue;
+            }
+
+            $headers[$name] = (string) $request->header($name);
         }
 
         return $headers;
+    }
+
+    /**
+     * Do not forward JWT cookies upstream — catalog only needs its own session/XSRF cookies.
+     */
+    private function stripAuthCookiesFromHeader(string $cookieHeader): string
+    {
+        $parts = array_filter(array_map('trim', explode(';', $cookieHeader)));
+        $kept = [];
+
+        foreach ($parts as $part) {
+            $name = strstr($part, '=', true);
+            if ($name === false) {
+                $name = $part;
+            }
+
+            if (in_array($name, ['access_token', 'refresh_token'], true)) {
+                continue;
+            }
+
+            $kept[] = $part;
+        }
+
+        return implode('; ', $kept);
     }
 
     /**

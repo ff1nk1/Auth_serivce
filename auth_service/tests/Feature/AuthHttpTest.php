@@ -150,4 +150,72 @@ class AuthHttpTest extends TestCase
             'Blacklisted access token must not resolve a user'
         );
     }
+
+    public function test_login_access_cookie_ttl_is_shorter_than_refresh(): void
+    {
+        config(['jwt.ttl' => 15, 'jwt.refresh_ttl' => 60 * 60 * 24 * 30]);
+
+        $role = Role::where('slug', 'customer')->first();
+        User::factory()->create([
+            'email' => 'ttl@example.com',
+            'password' => Hash::make('password123'),
+            'role_id' => $role->id,
+        ]);
+
+        $response = $this->postJson('/api/login', [
+            'email' => 'ttl@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertOk();
+
+        $accessCookie = $response->getCookie('access_token', false);
+        $refreshCookie = $response->getCookie('refresh_token', false);
+
+        $this->assertNotNull($accessCookie);
+        $this->assertNotNull($refreshCookie);
+        $this->assertLessThan(
+            $refreshCookie->getExpiresTime(),
+            $accessCookie->getExpiresTime(),
+            'Access cookie must expire before refresh cookie'
+        );
+    }
+
+    public function test_change_password_revokes_current_tokens(): void
+    {
+        $role = Role::where('slug', 'customer')->first();
+        User::factory()->create([
+            'email' => 'pwd@example.com',
+            'password' => Hash::make('old-password'),
+            'role_id' => $role->id,
+        ]);
+
+        $tokens = app(AuthService::class)->login([
+            'email' => 'pwd@example.com',
+            'password' => 'old-password',
+        ]);
+
+        $this->withToken($tokens['access_token'])
+            ->withUnencryptedCookie('access_token', $tokens['access_token'])
+            ->withUnencryptedCookie('refresh_token', $tokens['refresh_token'])
+            ->patchJson('/api/profile/password', [
+                'current_password' => 'old-password',
+                'new_password' => 'new-password-123',
+            ])
+            ->assertOk()
+            ->assertCookieExpired('access_token')
+            ->assertCookieExpired('refresh_token');
+
+        $jwt = app(JwtService::class);
+        $decoded = $jwt->decode($tokens['access_token']);
+        $this->assertTrue(Redis::exists("jwt:blacklist:{$decoded->jti}") > 0);
+
+        $refreshHash = hash('sha256', $tokens['refresh_token']);
+        $this->assertFalse(Redis::exists("refresh_token:{$refreshHash}") > 0);
+        $this->assertTrue(Redis::exists("refresh_token:blacklist:{$refreshHash}") > 0);
+
+        $request = Request::create('/api/user', 'GET');
+        $request->headers->set('Authorization', 'Bearer '.$tokens['access_token']);
+        $this->assertNull($jwt->userFromRequest($request));
+    }
 }

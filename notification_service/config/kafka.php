@@ -86,4 +86,16 @@ return [
      | Kafka message id key name
      */
     'message_id_key' => env('MESSAGE_ID_KEY', 'laravel-kafka::message-id'),
+
+    'topics' => [
+        'user_events' => env('KAFKA_TOPIC_USER_EVENTS', 'user.events'),
+        'user_events_dlq' => env('KAFKA_TOPIC_USER_EVENTS_DLQ', 'user.events.dlq'),
+        'order_events' => env('KAFKA_TOPIC_ORDER_EVENTS', 'order.events'),
+        'order_events_dlq' => env('KAFKA_TOPIC_ORDER_EVENTS_DLQ', 'order.events.dlq'),
+    ],
+
+    'consumer_groups' => [
+        'user' => env('KAFKA_CONSUMER_GROUP_USER', 'notification-service-consumers-v1'),
+        'order' => env('KAFKA_CONSUMER_GROUP_ORDER', 'notification-service-order-v1'),
+    ],
 ];

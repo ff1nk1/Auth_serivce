@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\Auth\AuthService;
+use App\Services\Auth\TokenCookieService;
 use App\Services\Gateway\ProxyService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,41 +13,32 @@ class GatewayController extends Controller
     public function __construct(
         private ProxyService $proxy,
         private AuthService $authService,
+        private TokenCookieService $tokenCookies,
     ) {}
 
     public function catalog(Request $request, string $path = ''): Response
     {
-        return $this->proxy->forward(
-            $request,
-            (string) config('services.catalog.url'),
-            $this->proxy->joinPath((string) config('services.catalog.paths.storefront'), $path),
-        );
+        return $this->forwardService($request, 'catalog', 'storefront', $path);
     }
 
     public function catalogAdmin(Request $request, string $path = ''): Response
     {
-        return $this->proxy->forward(
-            $request,
-            (string) config('services.catalog.url'),
-            $this->proxy->joinPath((string) config('services.catalog.paths.admin_api'), $path),
-        );
+        return $this->forwardService($request, 'catalog', 'admin_api', $path);
     }
 
     public function catalogAdminPanel(Request $request, string $path = ''): Response
     {
         $user = $request->user();
 
-        $response = $this->proxy->forwardHtml(
-            $request,
-            (string) config('services.catalog.url'),
-            $this->proxy->joinPath((string) config('services.catalog.paths.admin_panel'), $path),
-            [
+        $response = $this->forwardService($request, 'catalog', 'admin_panel', $path, [
+            'mode' => 'html',
+            'identity' => [
                 'id' => (int) $user->id,
-                'role' => (string) ($user->role?->slug ?? ''),
+                'role' => (string) ($user->role->slug ?? ''),
                 'name' => (string) ($user->name ?? ''),
                 'email' => (string) ($user->email ?? ''),
-            ]
-        );
+            ],
+        ]);
 
         // Filament POST /admin-catalog/logout — revoke JWT so the panel cannot be re-entered
         // with the same cookies after the catalog clears its session.
@@ -68,11 +60,7 @@ class GatewayController extends Controller
                 is_string($refreshToken) && $refreshToken !== '' ? $refreshToken : null,
             );
 
-            $domain = config('jwt.cookie_domain');
-
-            return $response
-                ->withoutCookie('access_token', '/', $domain)
-                ->withoutCookie('refresh_token', '/', $domain);
+            return $this->tokenCookies->clear($response);
         }
 
         return $response;
@@ -80,80 +68,92 @@ class GatewayController extends Controller
 
     public function uploadUrl(Request $request): Response
     {
-        return $this->proxy->forward(
-            $request,
-            (string) config('services.catalog.url'),
-            (string) config('services.catalog.paths.upload_url'),
-        );
+        return $this->forwardService($request, 'catalog', 'upload_url');
     }
 
     public function notifications(Request $request, string $path = ''): Response
     {
-        return $this->proxy->forward(
-            $request,
-            (string) config('services.notification.url'),
-            $this->proxy->joinPath((string) config('services.notification.paths.index'), $path),
-        );
+        return $this->forwardService($request, 'notification', 'index', $path);
     }
 
     public function orders(Request $request, string $path = ''): Response
     {
         $user = $request->user();
 
-        return $this->proxy->forward(
-            $request,
-            (string) config('services.order.url'),
-            $this->proxy->joinPath((string) config('services.order.paths.customer'), $path),
-            [
+        return $this->forwardService($request, 'order', 'customer', $path, [
+            'injectUser' => [
                 'id' => (int) $user->id,
                 'email' => $user->email,
                 'name' => $user->name,
-            ]
-        );
+            ],
+        ]);
     }
 
     public function ordersAdmin(Request $request, string $path = ''): Response
     {
-        return $this->proxy->forward(
-            $request,
-            (string) config('services.order.url'),
-            $this->proxy->joinPath((string) config('services.order.paths.admin'), $path),
-        );
+        return $this->forwardService($request, 'order', 'admin', $path);
     }
 
     public function stripeWebhook(Request $request): Response
     {
-        return $this->proxy->forwardRaw(
-            $request,
-            (string) config('services.order.url'),
-            (string) config('services.order.paths.stripe_webhook'),
-        );
+        return $this->forwardService($request, 'order', 'stripe_webhook', '', [
+            'mode' => 'raw',
+        ]);
     }
 
     public function analytics(Request $request, string $path = ''): Response
     {
-        return $this->proxy->forward(
-            $request,
-            (string) config('services.analytic.url'),
-            $this->proxy->joinPath((string) config('services.analytic.paths.index'), $path),
-        );
+        return $this->forwardService($request, 'analytic', 'index', $path);
     }
 
     public function search(Request $request): Response
     {
-        return $this->proxy->forward(
-            $request,
-            (string) config('services.search.url'),
-            (string) config('services.search.paths.search'),
-        );
+        return $this->forwardService($request, 'search', 'search');
     }
 
     public function searchAutocomplete(Request $request): Response
     {
+        return $this->forwardService($request, 'search', 'autocomplete');
+    }
+
+    /**
+     * @param  array{
+     *     mode?: 'json'|'html'|'raw',
+     *     injectUser?: array{id: int, email?: string|null, name?: string|null},
+     *     identity?: array{id: int, role: string, name?: string, email?: string}
+     * }  $options
+     */
+    private function forwardService(
+        Request $request,
+        string $service,
+        string $pathKey,
+        string $path = '',
+        array $options = [],
+    ): Response {
+        $baseUrl = (string) config("services.{$service}.url");
+        $prefix = (string) config("services.{$service}.paths.{$pathKey}");
+        $mode = $options['mode'] ?? 'json';
+
+        if ($mode === 'raw') {
+            return $this->proxy->forwardRaw($request, $baseUrl, $prefix);
+        }
+
+        $fullPath = $this->proxy->joinPath($prefix, $path);
+
+        if ($mode === 'html') {
+            return $this->proxy->forwardHtml(
+                $request,
+                $baseUrl,
+                $fullPath,
+                $options['identity'] ?? ['id' => 0, 'role' => ''],
+            );
+        }
+
         return $this->proxy->forward(
             $request,
-            (string) config('services.search.url'),
-            (string) config('services.search.paths.autocomplete'),
+            $baseUrl,
+            $fullPath,
+            $options['injectUser'] ?? null,
         );
     }
 }

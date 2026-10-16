@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\EmailLog;
-use App\Services\NotificationService;
+use App\Services\MailDeliveryService;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -21,7 +21,8 @@ class WelcomeMailMailhogTest extends TestCase
     {
         parent::setUp();
 
-        $this->mailhogHost = env('MAILHOG_HOST', 'notification_service_mailhog');
+        $host = getenv('MAILHOG_HOST');
+        $this->mailhogHost = is_string($host) && $host !== '' ? $host : 'notification_service_mailhog';
         $this->mailhogApiBase = 'http://'.$this->mailhogHost.':8025';
 
         config([
@@ -51,7 +52,7 @@ class WelcomeMailMailhogTest extends TestCase
             'name' => 'Mailhog User',
         ];
 
-        $result = (new NotificationService)->sendWelcomeMailWithRetry($payload);
+        $result = app(MailDeliveryService::class)->sendMailWithRetry($payload, 'user.registered');
 
         $this->assertTrue($result['isSent']);
         $result['emailLog']->refresh();

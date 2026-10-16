@@ -22,7 +22,7 @@ class AuthService
      */
     public function register(array $userData): User
     {
-        $userData['password'] = Hash::make($userData['password']);
+        // Password cast on User hashes plain text — do not Hash::make here.
         $userData['role_id'] = Role::where('slug', 'customer')->valueOrFail('id');
 
         $user = User::create($userData);
@@ -53,7 +53,6 @@ class AuthService
      */
     public function refreshTokens(?string $oldRefreshToken): ?array
     {
-
         if (! $oldRefreshToken) {
             return null;
         }
@@ -61,7 +60,6 @@ class AuthService
         $oldHash = hash('sha256', $oldRefreshToken);
         $oldKey = "refresh_token:{$oldHash}";
 
-        // Токен уже был использован или отозван
         if ($this->blacklist->isRefreshTokenBlacklisted($oldHash)) {
             return null;
         }
@@ -74,14 +72,15 @@ class AuthService
         $user = User::find($userId);
         if (! $user) {
             Redis::del($oldKey);
+            $this->forgetUserRefreshHash((int) $userId, $oldHash);
 
             return null;
         }
 
-        // Отправляем старый токен в blacklist
         $oldTtl = Redis::ttl($oldKey);
         $this->blacklist->blacklistRefreshToken($oldHash, $oldTtl);
         Redis::del($oldKey);
+        $this->forgetUserRefreshHash((int) $user->id, $oldHash);
 
         $tokens = $this->generateTokens($user);
         $tokens['user'] = $user;
@@ -90,7 +89,7 @@ class AuthService
     }
 
     /**
-     * Инвалидация токенов
+     * Инвалидация текущей пары токенов
      */
     public function logout(?string $accessToken, ?string $refreshToken): void
     {
@@ -102,11 +101,60 @@ class AuthService
             $hash = hash('sha256', $refreshToken);
             $key = "refresh_token:{$hash}";
 
+            $userId = Redis::get($key);
             $ttl = Redis::ttl($key);
             $this->blacklist->blacklistRefreshToken($hash, $ttl);
+            Redis::del($key);
 
+            if ($userId) {
+                $this->forgetUserRefreshHash((int) $userId, $hash);
+            }
+        }
+    }
+
+    /**
+     * Revoke access token (if provided) and every refresh token issued for the user.
+     */
+    public function revokeAllSessionsForUser(User $user, ?string $accessToken = null): void
+    {
+        if ($accessToken) {
+            $this->jwtService->revokeToken($accessToken);
+        }
+
+        $indexKey = $this->userRefreshIndexKey((int) $user->id);
+        $hashes = Redis::smembers($indexKey) ?: [];
+
+        foreach ($hashes as $hash) {
+            $key = "refresh_token:{$hash}";
+            $ttl = Redis::ttl($key);
+            $this->blacklist->blacklistRefreshToken((string) $hash, $ttl);
             Redis::del($key);
         }
+
+        Redis::del($indexKey);
+    }
+
+    public function verifyPassword(int|string $userId, string $password): User
+    {
+        $user = User::findOrFail($userId);
+        if (! Hash::check($password, $user->password)) {
+            throw new \Exception('Неверный пароль');
+        }
+
+        return $user;
+    }
+
+    public function archivePassword(User $user): void
+    {
+        $user->deleted_password = $user->password;
+        $user->password = Str::random(60);
+        $user->save();
+    }
+
+    public function setNewPassword(User $user, string $newPassword): void
+    {
+        $user->password = $newPassword;
+        $user->save();
     }
 
     /**
@@ -122,32 +170,23 @@ class AuthService
 
         Redis::setex("refresh_token:{$refreshHash}", $refreshTtl, $user->id);
 
+        $indexKey = $this->userRefreshIndexKey((int) $user->id);
+        Redis::sadd($indexKey, $refreshHash);
+        Redis::expire($indexKey, $refreshTtl);
+
         return [
             'access_token' => $accessToken,
             'refresh_token' => $refreshToken,
         ];
     }
 
-    public function check_password($id, $password)
+    private function userRefreshIndexKey(int $userId): string
     {
-        $user = User::findOrFail($id);
-        if (! Hash::check($password, $user->password)) {
-            throw new \Exception('Неверный пароль');
-        }
-
-        return $user;
+        return "user_refresh_tokens:{$userId}";
     }
 
-    public function set_psw_as_deleted(User $user): void
+    private function forgetUserRefreshHash(int $userId, string $hash): void
     {
-        $user->deleted_password = $user->password;
-        $user->password = Str::random(60);
-        $user->save();
-    }
-
-    public function set_new_password(User $user, string $newPassword): void
-    {
-        $user->password = Hash::make($newPassword);
-        $user->save();
+        Redis::srem($this->userRefreshIndexKey($userId), $hash);
     }
 }

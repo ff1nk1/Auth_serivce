@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderPaidMail;
 use App\Models\EmailLog;
-use App\Services\NotificationService;
+use App\Services\MailDeliveryService;
 use Illuminate\Mail\PendingMail;
 use Illuminate\Support\Facades\Mail;
 use Mockery;
@@ -23,6 +23,39 @@ class NotificationsApiTest extends TestCase
     {
         Mockery::close();
         parent::tearDown();
+    }
+
+    public function test_index_returns_paginated_notifications(): void
+    {
+        EmailLog::factory()->count(3)->create(['status' => 'sent']);
+
+        $response = $this->getJson('/api/notifications?per_page=2');
+
+        $response->assertOk()
+            ->assertJsonPath('per_page', 2)
+            ->assertJsonPath('total', 3)
+            ->assertJsonCount(2, 'data');
+    }
+
+    public function test_index_filters_by_status_email_and_event_type(): void
+    {
+        EmailLog::factory()->create([
+            'email' => 'keep@example.com',
+            'status' => 'failed',
+            'event_type' => 'order.paid',
+        ]);
+        EmailLog::factory()->create([
+            'email' => 'other@example.com',
+            'status' => 'sent',
+            'event_type' => 'user.registered',
+        ]);
+
+        $response = $this->getJson('/api/notifications?status=failed&email=keep@example.com&event_type=order.paid');
+
+        $response->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.email', 'keep@example.com')
+            ->assertJsonPath('data.0.event_type', 'order.paid');
     }
 
     public function test_show_returns_email_log_from_mongo(): void
@@ -155,7 +188,7 @@ class NotificationsApiTest extends TestCase
 
     public function test_resend_returns_400_when_smtp_fails(): void
     {
-        $maxRetries = NotificationService::MAX_RETRIES;
+        $maxRetries = MailDeliveryService::MAX_RETRIES;
 
         $pendingMailMock = Mockery::mock(PendingMail::class);
         $pendingMailMock->shouldReceive('send')

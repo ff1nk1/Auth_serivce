@@ -3,17 +3,18 @@
 namespace Tests\Feature;
 
 use App\Kafka\Handlers\OrderEventsHandler;
+use App\Mail\MailableRegistry;
 use App\Mail\OrderCancelledMail;
 use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderPaidMail;
 use App\Models\EmailLog;
-use App\Services\NotificationService;
+use App\Services\MailDeliveryService;
 use Illuminate\Mail\PendingMail;
 use Illuminate\Support\Facades\Mail;
-use Junges\Kafka\Contracts\ConsumerMessage;
 use Junges\Kafka\Facades\Kafka;
 use Mockery;
 use Mockery\MockInterface;
+use Tests\Fakes\FakeConsumerMessage;
 use Tests\TestCase;
 
 class OrderEventsHandlerTest extends TestCase
@@ -47,6 +48,7 @@ class OrderEventsHandlerTest extends TestCase
         $this->assertSame('sent', $log->status);
         $this->assertSame('order.paid', $log->event_type);
         $this->assertSame('order.paid', $log->payload['event_type'] ?? null);
+        $this->assertNotEmpty($log->message_id);
     }
 
     public function test_handler_sends_order_confirmed_mail(): void
@@ -73,6 +75,10 @@ class OrderEventsHandlerTest extends TestCase
         Mail::assertSent(OrderCancelledMail::class, function (OrderCancelledMail $mail) {
             return ($mail->payload['reason'] ?? null) === 'insufficient_stock';
         });
+
+        $log = EmailLog::where('email', $body['email'])->first();
+        $this->assertNotNull($log);
+        $this->assertSame('sent', $log->status);
     }
 
     public function test_handler_uses_event_type_from_body_when_header_missing(): void
@@ -80,10 +86,7 @@ class OrderEventsHandlerTest extends TestCase
         Mail::fake();
 
         $body = $this->orderBody(['event_type' => 'order.paid']);
-        $message = Mockery::mock(ConsumerMessage::class);
-        $message->shouldReceive('getHeaders')->andReturn([]);
-        $message->shouldReceive('getBody')->andReturn($body);
-        $message->shouldReceive('getKey')->andReturn('42');
+        $message = new FakeConsumerMessage($body, [], '42');
 
         app(OrderEventsHandler::class)($message);
 
@@ -110,12 +113,10 @@ class OrderEventsHandlerTest extends TestCase
         Mail::fake();
         Kafka::fake();
 
-        $message = Mockery::mock(ConsumerMessage::class);
-        $message->shouldReceive('getHeaders')->andReturn(['event-type' => 'order.paid']);
-        $message->shouldReceive('getBody')->andReturn([
+        $message = new FakeConsumerMessage([
             'order_id' => 1,
             'name' => 'No Email',
-        ]);
+        ], ['event-type' => 'order.paid'], '1');
 
         app(OrderEventsHandler::class)($message);
 
@@ -124,11 +125,28 @@ class OrderEventsHandlerTest extends TestCase
         Kafka::assertNothingPublished();
     }
 
+    public function test_handler_is_idempotent_for_already_sent_message_id(): void
+    {
+        Mail::fake();
+
+        $body = $this->orderBody();
+        $message = $this->message('order.paid', $body, '42', [
+            'event-type' => 'order.paid',
+            'laravel-kafka::message-id' => 'idempotent-order-1',
+        ]);
+
+        app(OrderEventsHandler::class)($message);
+        app(OrderEventsHandler::class)($message);
+
+        Mail::assertSent(OrderPaidMail::class, 1);
+        $this->assertSame(1, EmailLog::where('message_id', 'idempotent-order-1')->count());
+    }
+
     public function test_handler_marks_failed_and_publishes_to_dlq_after_retries_exhausted(): void
     {
         Kafka::fake();
 
-        $maxRetries = NotificationService::MAX_RETRIES;
+        $maxRetries = MailDeliveryService::MAX_RETRIES;
         $pendingMailMock = Mockery::mock(PendingMail::class);
         $pendingMailMock->shouldReceive('send')
             ->times($maxRetries)
@@ -139,11 +157,11 @@ class OrderEventsHandlerTest extends TestCase
             ->with('dlq-order@example.com')
             ->andReturn($pendingMailMock);
 
-        /** @var NotificationService&MockInterface $service */
-        $service = Mockery::mock(NotificationService::class)->makePartial();
+        /** @var MailDeliveryService&MockInterface $service */
+        $service = Mockery::mock(MailDeliveryService::class, [new MailableRegistry])->makePartial();
         $service->shouldAllowMockingProtectedMethods();
         $service->shouldReceive('sleepInTest')->times($maxRetries - 1);
-        $this->app->instance(NotificationService::class, $service);
+        $this->app->instance(MailDeliveryService::class, $service);
 
         $body = $this->orderBody(['email' => 'dlq-order@example.com']);
         $message = $this->message('order.paid', $body, '99');
@@ -181,14 +199,18 @@ class OrderEventsHandlerTest extends TestCase
 
     /**
      * @param  array<string, mixed>  $body
+     * @param  array<string, mixed>  $headers
      */
-    private function message(string $eventType, array $body, string $key = '42'): ConsumerMessage
-    {
-        $message = Mockery::mock(ConsumerMessage::class);
-        $message->shouldReceive('getHeaders')->andReturn(['event-type' => $eventType]);
-        $message->shouldReceive('getBody')->andReturn($body);
-        $message->shouldReceive('getKey')->andReturn($key);
-
-        return $message;
+    private function message(
+        string $eventType,
+        array $body,
+        string $key = '42',
+        ?array $headers = null,
+    ): FakeConsumerMessage {
+        return new FakeConsumerMessage(
+            $body,
+            $headers ?? ['event-type' => $eventType],
+            $key,
+        );
     }
 }

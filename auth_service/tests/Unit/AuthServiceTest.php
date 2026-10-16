@@ -42,6 +42,8 @@ class AuthServiceTest extends TestCase
         });
 
         Redis::shouldReceive('setex')->once();
+        Redis::shouldReceive('sadd')->once();
+        Redis::shouldReceive('expire')->once();
 
         $tokens = app(AuthService::class)->login([
             'email' => $user->email,
@@ -97,6 +99,11 @@ class AuthServiceTest extends TestCase
             $mock->shouldReceive('revokeToken')->once()->with($accessToken);
         });
 
+        Redis::shouldReceive('get')
+            ->once()
+            ->with("refresh_token:{$hash}")
+            ->andReturn('42');
+
         Redis::shouldReceive('ttl')
             ->once()
             ->with("refresh_token:{$hash}")
@@ -111,6 +118,10 @@ class AuthServiceTest extends TestCase
         Redis::shouldReceive('del')
             ->once()
             ->with("refresh_token:{$hash}");
+
+        Redis::shouldReceive('srem')
+            ->once()
+            ->with('user_refresh_tokens:42', $hash);
 
         app(AuthService::class)->logout($accessToken, $refreshToken);
     }
@@ -154,5 +165,18 @@ class AuthServiceTest extends TestCase
             ->andReturn(null);
 
         $this->assertNull(app(AuthService::class)->refreshTokens($refresh));
+    }
+
+    public function test_blacklist_refresh_token_uses_fallback_ttl_when_redis_ttl_non_positive(): void
+    {
+        config(['jwt.refresh_ttl' => 120]);
+
+        $hash = hash('sha256', 'no-ttl-token');
+
+        Redis::shouldReceive('setex')
+            ->once()
+            ->with("refresh_token:blacklist:{$hash}", 120, '1');
+
+        app(TokenBlacklistService::class)->blacklistRefreshToken($hash, -1);
     }
 }
