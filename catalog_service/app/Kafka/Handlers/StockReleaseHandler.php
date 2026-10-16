@@ -2,7 +2,7 @@
 
 namespace App\Kafka\Handlers;
 
-use App\Models\OutboxEvent;
+use App\Events\StockChanged;
 use App\Models\Stock;
 use App\Services\SagaStepGuard;
 use Illuminate\Support\Facades\DB;
@@ -70,11 +70,7 @@ class StockReleaseHandler
             }
 
             foreach ($stockChangedEvents as $changedEvent) {
-                OutboxEvent::create([
-                    'topic' => 'catalog.events',
-                    'event_type' => 'stock.changed',
-                    'payload' => $changedEvent,
-                ]);
+                event(new StockChanged($changedEvent));
             }
 
             DB::commit();

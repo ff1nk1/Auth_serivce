@@ -2,64 +2,35 @@
 
 namespace App\Services\Auth;
 
+use App\Events\UserRegistered;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Junges\Kafka\Facades\Kafka;
-use Illuminate\Support\Facades\Log;
-
 
 class AuthService
 {
     public function __construct(
-        private JwtService $jwtService
+        private JwtService $jwtService,
+        private TokenBlacklistService $blacklist
     ) {}
 
     /**
      * Регистрация пользователя
      */
     public function register(array $userData): User
-{
-    $userData['password'] = Hash::make($userData['password']);
-    $userData['role_id']  = Role::where('slug', 'customer')->valueOrFail('id');
+    {
+        $userData['password'] = Hash::make($userData['password']);
+        $userData['role_id'] = Role::where('slug', 'customer')->valueOrFail('id');
 
-    $user = User::create($userData);
+        $user = User::create($userData);
 
-    try {
-        Kafka::publish(config('kafka.brokers', 'kafka:29092'))
-            ->onTopic('user.events')
-            ->withConfigOptions([
-                'socket.timeout.ms'  => 60000,
-                'message.timeout.ms' => 60000,
-                'request.timeout.ms' => 30000,
-                'retries'            => 10,
-                'retry.backoff.ms'   => 1000,
-            ])
-            ->withKafkaKey((string) $user->id)
-            ->withHeaders([
-                'event-type' => 'user.registered',
-                'source'     => 'auth-service',
-            ])
-            ->withBody([
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'name'  => $user->name,
-                'registered_at' => $user->created_at?->toIso8601String() ?? now()->toIso8601String(),
-                'event_type' => 'user.registered',
-            ])
-            ->send();
-    } catch (\Throwable $e) {
-        Log::error('Kafka publish failed on user.registered', [
-            'user_id' => $user->id,
-            'error'   => $e->getMessage(),
-        ]);
+        event(new UserRegistered($user));
+
+        return $user;
     }
-
-    return $user;
-}
 
     /**
      * Проверка данных и генерация пары токенов
@@ -89,10 +60,9 @@ class AuthService
 
         $oldHash = hash('sha256', $oldRefreshToken);
         $oldKey = "refresh_token:{$oldHash}";
-        $blacklistKey = "refresh_token:blacklist:{$oldHash}";
 
         // Токен уже был использован или отозван
-        if (Redis::exists($blacklistKey)) {
+        if ($this->blacklist->isRefreshTokenBlacklisted($oldHash)) {
             return null;
         }
 
@@ -110,9 +80,7 @@ class AuthService
 
         // Отправляем старый токен в blacklist
         $oldTtl = Redis::ttl($oldKey);
-        if ($oldTtl > 0) {
-            Redis::setex($blacklistKey, $oldTtl, '1');
-        }
+        $this->blacklist->blacklistRefreshToken($oldHash, $oldTtl);
         Redis::del($oldKey);
 
         $tokens = $this->generateTokens($user);
@@ -133,12 +101,9 @@ class AuthService
         if ($refreshToken) {
             $hash = hash('sha256', $refreshToken);
             $key = "refresh_token:{$hash}";
-            $blacklistKey = "refresh_token:blacklist:{$hash}";
 
             $ttl = Redis::ttl($key);
-            if ($ttl > 0) {
-                Redis::setex($blacklistKey, $ttl, '1');
-            }
+            $this->blacklist->blacklistRefreshToken($hash, $ttl);
 
             Redis::del($key);
         }

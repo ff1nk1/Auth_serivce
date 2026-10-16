@@ -2,15 +2,15 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductAttribute;
 use App\Models\Stock;
 use App\Models\Store;
 use App\Services\CatalogService;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class ShopSeeder extends Seeder
 {
@@ -32,9 +32,9 @@ class ShopSeeder extends Seeder
         // 2. Создаем магазины
         $storesData = ['Главный склад', 'Магазин на Ленина', 'ТЦ Галерея', 'Точка выдачи'];
         $stores = collect();
-        
+
         foreach ($storesData as $storeName) {
-            // Предполагается, что в модели Store есть поле name. 
+            // Предполагается, что в модели Store есть поле name.
             // Если там другие поля - добавьте их сюда.
             $stores->push(Store::create([
                 'name' => $storeName,
@@ -52,16 +52,16 @@ class ShopSeeder extends Seeder
                             ['name' => 'Ноутбуки'],
                             ['name' => 'Мониторы'],
                             ['name' => 'Комплектующие'],
-                        ]
+                        ],
                     ],
                     [
                         'name' => 'Смартфоны и гаджеты',
                         'children' => [
                             ['name' => 'Смартфоны'],
                             ['name' => 'Умные часы'],
-                        ]
-                    ]
-                ]
+                        ],
+                    ],
+                ],
             ],
             [
                 'name' => 'Одежда и обувь',
@@ -71,17 +71,17 @@ class ShopSeeder extends Seeder
                         'children' => [
                             ['name' => 'Куртки'],
                             ['name' => 'Футболки'],
-                        ]
+                        ],
                     ],
                     [
                         'name' => 'Женская',
                         'children' => [
                             ['name' => 'Платья'],
                             ['name' => 'Джинсы'],
-                        ]
-                    ]
-                ]
-            ]
+                        ],
+                    ],
+                ],
+            ],
         ];
 
         // Рекурсивная функция для создания категорий и их детей
@@ -113,10 +113,10 @@ class ShopSeeder extends Seeder
                     // Привязываем к случайному магазину из созданных ранее
                     'store_id' => $stores->random()->id,
                     'category_id' => $category->id,
-                    'name' => "{$category->name} " . Str::random(5) . " - Модель {$i}",
+                    'name' => "{$category->name} ".Str::random(5)." - Модель {$i}",
                     'description' => "Это подробное описание для потрясающего товара из категории {$category->name}. Отличное качество и гарантия.",
                     'price' => rand(1000, 150000) / 10, // Случайная цена от 100.0 до 15000.0
-                    'image_url' => "https://placehold.co/600x400/png?text=" . urlencode($category->name),
+                    'image_url' => 'https://placehold.co/600x400/png?text='.urlencode($category->name),
                 ]);
             }
         }

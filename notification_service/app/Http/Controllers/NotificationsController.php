@@ -4,14 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\NotificationsRequest;
 use App\Models\EmailLog;
-use App\Services\NotificationService;   
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 
 class NotificationsController extends Controller
 {
-    public function __construct(private NotificationService $notificationService){}
+    public function __construct(private NotificationService $notificationService) {}
+
     public function get_notifications(
-        NotificationsRequest $request, 
+        NotificationsRequest $request,
     ): JsonResponse {
         $notifications = $this->notificationService->getFilteredNotifications($request);
 
@@ -46,7 +47,7 @@ class NotificationsController extends Controller
         if ($isSent) {
             return response()->json([
                 'message' => 'Уведомление успешно отправлено!',
-                'data'    => $notification->fresh(), // Возвращаем обновленный документ
+                'data' => $notification->fresh(), // Возвращаем обновленный документ
             ], 200);
         }
 
@@ -54,5 +55,4 @@ class NotificationsController extends Controller
             'message' => $notification->error_message ?? 'Не удалось отправить уведомление',
         ], 400);
     }
-
 }

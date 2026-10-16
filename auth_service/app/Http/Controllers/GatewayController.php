@@ -19,7 +19,7 @@ class GatewayController extends Controller
         return $this->proxy->forward(
             $request,
             (string) config('services.catalog.url'),
-            '/api/catalog/'.ltrim($path, '/')
+            $this->proxy->joinPath((string) config('services.catalog.paths.storefront'), $path),
         );
     }
 
@@ -28,19 +28,18 @@ class GatewayController extends Controller
         return $this->proxy->forward(
             $request,
             (string) config('services.catalog.url'),
-            '/api/admin/'.ltrim($path, '/')
+            $this->proxy->joinPath((string) config('services.catalog.paths.admin_api'), $path),
         );
     }
 
     public function catalogAdminPanel(Request $request, string $path = ''): Response
     {
         $user = $request->user();
-        $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
 
         $response = $this->proxy->forwardHtml(
             $request,
             (string) config('services.catalog.url'),
-            '/admin-catalog'.$suffix,
+            $this->proxy->joinPath((string) config('services.catalog.paths.admin_panel'), $path),
             [
                 'id' => (int) $user->id,
                 'role' => (string) ($user->role?->slug ?? ''),
@@ -84,30 +83,27 @@ class GatewayController extends Controller
         return $this->proxy->forward(
             $request,
             (string) config('services.catalog.url'),
-            '/api/get-upload-url'
+            (string) config('services.catalog.paths.upload_url'),
         );
     }
 
     public function notifications(Request $request, string $path = ''): Response
     {
-        $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
-
         return $this->proxy->forward(
             $request,
             (string) config('services.notification.url'),
-            '/api/notifications'.$suffix
+            $this->proxy->joinPath((string) config('services.notification.paths.index'), $path),
         );
     }
 
     public function orders(Request $request, string $path = ''): Response
     {
-        $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
         $user = $request->user();
 
         return $this->proxy->forward(
             $request,
             (string) config('services.order.url'),
-            '/api/orders'.$suffix,
+            $this->proxy->joinPath((string) config('services.order.paths.customer'), $path),
             [
                 'id' => (int) $user->id,
                 'email' => $user->email,
@@ -118,12 +114,10 @@ class GatewayController extends Controller
 
     public function ordersAdmin(Request $request, string $path = ''): Response
     {
-        $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
-
         return $this->proxy->forward(
             $request,
             (string) config('services.order.url'),
-            '/api/admin/orders'.$suffix
+            $this->proxy->joinPath((string) config('services.order.paths.admin'), $path),
         );
     }
 
@@ -132,18 +126,16 @@ class GatewayController extends Controller
         return $this->proxy->forwardRaw(
             $request,
             (string) config('services.order.url'),
-            '/api/webhooks/stripe'
+            (string) config('services.order.paths.stripe_webhook'),
         );
     }
 
     public function analytics(Request $request, string $path = ''): Response
     {
-        $suffix = $path === '' ? '' : '/'.ltrim($path, '/');
-
         return $this->proxy->forward(
             $request,
             (string) config('services.analytic.url'),
-            '/analytics'.$suffix
+            $this->proxy->joinPath((string) config('services.analytic.paths.index'), $path),
         );
     }
 
@@ -152,7 +144,7 @@ class GatewayController extends Controller
         return $this->proxy->forward(
             $request,
             (string) config('services.search.url'),
-            '/api/search'
+            (string) config('services.search.paths.search'),
         );
     }
 
@@ -161,8 +153,7 @@ class GatewayController extends Controller
         return $this->proxy->forward(
             $request,
             (string) config('services.search.url'),
-            '/api/search/autocomplete'
+            (string) config('services.search.paths.autocomplete'),
         );
     }
 }
-

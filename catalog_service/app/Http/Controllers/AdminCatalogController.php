@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Http\Requests\UpdateCategoryRequest;
 use App\Models\Category;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Services\CatalogService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AdminCatalogController extends Controller
 {
@@ -40,6 +40,7 @@ class AdminCatalogController extends Controller
 
         return response()->json(['message' => 'Категория обновлена', 'category' => $category]);
     }
+
     // GET /api/admin/categories/{category}
     public function show(Category $category): JsonResponse
     {
@@ -50,7 +51,7 @@ class AdminCatalogController extends Controller
     public function destroy(Category $category): JsonResponse
     {
         $this->catalogService->deleteCategory($category);
-        
+
         return response()->json(['message' => 'Категория удалена']);
     }
 }

@@ -16,12 +16,12 @@ return new class extends Migration
 
             // Ссылка на родительскую категорию для построения дерева
             $table->foreignId('parent_id')
-                  ->nullable()
-                  ->constrained('categories')
-                  ->nullOnDelete();
+                ->nullable()
+                ->constrained('categories')
+                ->nullOnDelete();
 
             $table->string('name');
-            $table->string('slug')->unique(); 
+            $table->string('slug')->unique();
 
             $table->timestamps();
         });

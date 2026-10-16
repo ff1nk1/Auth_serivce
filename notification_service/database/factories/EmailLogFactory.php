@@ -25,16 +25,16 @@ class EmailLogFactory extends Factory
         $name = $this->faker->name();
 
         return [
-            'message_id'    => $this->faker->uuid(),
-            'email'         => $email,
-            'name'          => $name,
-            'payload'       => [
+            'message_id' => $this->faker->uuid(),
+            'email' => $email,
+            'name' => $name,
+            'payload' => [
                 'email' => $email,
-                'name'  => $name,
+                'name' => $name,
             ],
-            'status'        => 'pending',
-            'retries'       => 0,
-            'moved_to_dlq'  => false,
+            'status' => 'pending',
+            'retries' => 0,
+            'moved_to_dlq' => false,
             'error_message' => null,
         ];
     }
@@ -45,7 +45,7 @@ class EmailLogFactory extends Factory
     public function sent(): Factory
     {
         return $this->state(fn (array $attributes) => [
-            'status'  => 'sent',
+            'status' => 'sent',
             'retries' => 1,
         ]);
     }
@@ -56,7 +56,7 @@ class EmailLogFactory extends Factory
     public function failed(string $errorMessage = 'Connection timeout'): Factory
     {
         return $this->state(fn (array $attributes) => [
-            'status'        => 'failed',
+            'status' => 'failed',
             'error_message' => $errorMessage,
         ]);
     }
@@ -67,9 +67,9 @@ class EmailLogFactory extends Factory
     public function dlq(): Factory
     {
         return $this->state(fn (array $attributes) => [
-            'status'        => 'failed',
-            'moved_to_dlq'  => true,
-            'retries'       => 3, // например, максимальное число попыток
+            'status' => 'failed',
+            'moved_to_dlq' => true,
+            'retries' => 3, // например, максимальное число попыток
             'error_message' => 'Max retries exhausted',
         ]);
     }

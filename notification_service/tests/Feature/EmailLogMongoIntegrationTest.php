@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\EmailLog;
 use App\Services\NotificationService;
-use App\Mail\WelcomeMail;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Mail\PendingMail;
+use Illuminate\Support\Facades\Mail;
 use Mockery;
+use Mockery\MockInterface;
+use Tests\TestCase;
 
 class EmailLogMongoIntegrationTest extends TestCase
 {
@@ -32,10 +32,10 @@ class EmailLogMongoIntegrationTest extends TestCase
     {
         Mail::fake();
 
-        $service = new NotificationService();
+        $service = new NotificationService;
         $payload = [
             'email' => 'mongo_user@example.com',
-            'name'  => 'Mongo Test User',
+            'name' => 'Mongo Test User',
         ];
 
         $result = $service->sendWelcomeMailWithRetry($payload);
@@ -47,13 +47,13 @@ class EmailLogMongoIntegrationTest extends TestCase
         $this->assertEquals('mongo_user@example.com', $emailLog->email);
 
         $this->assertDatabaseHas('email_logs', [
-            '_id'          => $emailLog->_id,
-            'email'        => 'mongo_user@example.com',
-            'status'       => 'sent',
-            'retries'      => 1,
+            '_id' => $emailLog->_id,
+            'email' => 'mongo_user@example.com',
+            'status' => 'sent',
+            'retries' => 1,
             'moved_to_dlq' => false,
             'error_message' => null,
-        ], 'mongodb'); 
+        ], 'mongodb');
 
         $emailLog->refresh();
         $this->assertNotNull($emailLog->time);
@@ -78,11 +78,11 @@ class EmailLogMongoIntegrationTest extends TestCase
             ->andReturn($pendingMailMock);
 
         $logInMongo = EmailLog::factory()->create([
-            'email'  => 'fail_user@example.com',
+            'email' => 'fail_user@example.com',
             'status' => 'pending',
         ]);
 
-        $service = new NotificationService();
+        $service = new NotificationService;
         $result = $service->send_email($logInMongo);
 
         $this->assertFalse($result);
@@ -93,8 +93,8 @@ class EmailLogMongoIntegrationTest extends TestCase
         $this->assertEquals('Ошибка отправки из админки: SMTP Connection Rejected', $logInMongo->error_message);
 
         $this->assertDatabaseHas('email_logs', [
-            '_id'           => $logInMongo->_id,
-            'status'        => 'failed',
+            '_id' => $logInMongo->_id,
+            'status' => 'failed',
             'error_message' => 'Ошибка отправки из админки: SMTP Connection Rejected',
         ], 'mongodb');
     }
@@ -117,7 +117,7 @@ class EmailLogMongoIntegrationTest extends TestCase
             ->with('retry_mongo@example.com')
             ->andReturn($pendingMailMock);
 
-        /** @var NotificationService&\Mockery\MockInterface $service */
+        /** @var NotificationService&MockInterface $service */
         $service = Mockery::mock(NotificationService::class)->makePartial();
         $service->shouldAllowMockingProtectedMethods();
         $service->shouldReceive('sleepInTest')->times($maxRetries - 1);
@@ -138,9 +138,9 @@ class EmailLogMongoIntegrationTest extends TestCase
 
         // Проверяем актуальное состояние в Mongo-коллекции
         $this->assertDatabaseHas('email_logs', [
-            '_id'     => $emailLog->_id,
+            '_id' => $emailLog->_id,
             'retries' => $maxRetries,
-            'status'  => 'pending',
+            'status' => 'pending',
         ], 'mongodb');
     }
 }

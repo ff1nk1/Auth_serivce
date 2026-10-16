@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Mail;
 use Junges\Kafka\Contracts\ConsumerMessage;
 use Junges\Kafka\Facades\Kafka;
 use Mockery;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class OrderEventsHandlerTest extends TestCase
@@ -138,7 +139,7 @@ class OrderEventsHandlerTest extends TestCase
             ->with('dlq-order@example.com')
             ->andReturn($pendingMailMock);
 
-        /** @var NotificationService&\Mockery\MockInterface $service */
+        /** @var NotificationService&MockInterface $service */
         $service = Mockery::mock(NotificationService::class)->makePartial();
         $service->shouldAllowMockingProtectedMethods();
         $service->shouldReceive('sleepInTest')->times($maxRetries - 1);

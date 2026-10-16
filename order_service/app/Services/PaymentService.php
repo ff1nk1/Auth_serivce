@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Events\OrderConfirmed;
+use App\Events\OrderPaid;
+use App\Events\StockReleaseRequested;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Stripe\StripeClient;
@@ -14,7 +17,6 @@ class PaymentService
     public function __construct(
         private OrderService $orders,
         private StripeClient $stripe,
-        private OutboxWriter $outbox,
         private SagaStepGuard $saga,
     ) {}
 
@@ -171,8 +173,8 @@ class PaymentService
                 $order->save();
 
                 $payload = $this->orders->notificationPayload($order);
-                $this->outbox->write('order.events', 'order.paid', $payload);
-                $this->outbox->write('order.events', 'order.confirmed', $payload);
+                event(new OrderPaid($payload));
+                event(new OrderConfirmed($payload));
             }
         });
     }
@@ -214,7 +216,7 @@ class PaymentService
                 $releaseOrderId = $order->id;
             }
 
-            $this->outbox->write('order.events', 'stock.release_requested', $releasePayload);
+            event(new StockReleaseRequested($releasePayload));
         });
 
         if ($releaseSagaId !== null && $releaseOrderId !== null) {
@@ -247,7 +249,8 @@ class PaymentService
 
         return null;
     }
-//
+
+    //
     private function toMinorUnits(string $amount): int
     {
         if (function_exists('bcmul')) {

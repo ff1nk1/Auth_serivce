@@ -1,14 +1,17 @@
 <?php
+
 namespace Tests\Unit;
 
-use Tests\TestCase;
-use App\Models\EmailLog;
-use Illuminate\Support\Facades\Mail;
 use App\Mail\WelcomeMail;
+use App\Models\EmailLog;
 use App\Services\NotificationService;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Mail\PendingMail;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Mockery;
+use Mockery\MockInterface;
+use Tests\TestCase;
+
 // use Illuminate\Foundation\Testing\RefreshDatabase; // Если у вас MongoDB, очистку базы нужно настроить отдельно, так как стандартный RefreshDatabase работает с SQL
 
 class NotificationTest extends TestCase
@@ -22,11 +25,11 @@ class NotificationTest extends TestCase
 
         $notification = EmailLog::factory()->create([
             'email' => 'test@example.com',
-            'name'  => 'John Doe',
+            'name' => 'John Doe',
             'status' => 'pending',
         ]);
 
-        $service = new NotificationService();
+        $service = new NotificationService;
         $result = $service->send_email($notification);
 
         $this->assertTrue($result);
@@ -34,10 +37,11 @@ class NotificationTest extends TestCase
         Mail::assertSent(WelcomeMail::class, function ($mail) use ($notification) {
             // Проверяем адресата
             $hasCorrectTo = $mail->hasTo($notification->email);
-            $hasCorrectPayload = 
+            $hasCorrectPayload =
                 isset($mail->payload['email']) && $mail->payload['email'] === $notification->email &&
                 isset($mail->payload['name']) && $mail->payload['name'] === $notification->name;
-            return $hasCorrectTo && $hasCorrectPayload; 
+
+            return $hasCorrectTo && $hasCorrectPayload;
         });
 
         $notification->refresh();
@@ -62,11 +66,11 @@ class NotificationTest extends TestCase
 
         $notification = EmailLog::factory()->create([
             'email' => 'test@example.com',
-            'name'  => 'John Doe',
+            'name' => 'John Doe',
             'status' => 'pending',
         ]);
 
-        $service = new NotificationService();
+        $service = new NotificationService;
         $result = $service->send_email($notification);
 
         $this->assertFalse($result);
@@ -108,7 +112,7 @@ class NotificationTest extends TestCase
             ],
         ]);
 
-        $service = new NotificationService();
+        $service = new NotificationService;
         $result = $service->send_email($notification);
 
         $this->assertTrue($result);
@@ -122,7 +126,7 @@ class NotificationTest extends TestCase
     {
         $payload = [
             'email' => 'test@example.com',
-            'name'  => 'Иван Иванов',
+            'name' => 'Иван Иванов',
         ];
 
         $mail = new WelcomeMail($payload);
@@ -149,17 +153,17 @@ class NotificationTest extends TestCase
         Mail::fake();
         $logSpy = Log::spy();
 
-        $service = new NotificationService();
+        $service = new NotificationService;
         $payload = ['email' => 'test@example.com', 'name' => 'John'];
 
         $result = $service->sendWelcomeMailWithRetry($payload);
 
         $this->assertTrue($result['isSent']);
         $this->assertEmpty($result['lastError']);
-        
+
         $this->assertEquals('sent', $result['emailLog']->status);
         $this->assertEquals(1, $result['emailLog']->retries);
-        
+
         Mail::assertSent(WelcomeMail::class, function ($mail) use ($payload) {
             return $mail->hasTo($payload['email']);
         });
@@ -178,7 +182,7 @@ class NotificationTest extends TestCase
     public function test_it_retries_and_succeeds_on_second_attempt()
     {
         $pendingMailMock = Mockery::mock(PendingMail::class);
-        
+
         $callCount = 0;
         $pendingMailMock->shouldReceive('send')
             ->twice()
@@ -187,6 +191,7 @@ class NotificationTest extends TestCase
                 if ($callCount === 1) {
                     throw new \Exception('SMTP timeout');
                 }
+
                 return true;
             });
 
@@ -197,19 +202,19 @@ class NotificationTest extends TestCase
 
         $logSpy = Log::spy();
 
-        /** @var NotificationService&\Mockery\MockInterface $service */
+        /** @var NotificationService&MockInterface $service */
         $service = Mockery::mock(NotificationService::class)->makePartial();
         $service->shouldAllowMockingProtectedMethods();
         $service->shouldReceive('sleepInTest')
             ->once()
-            ->with(Mockery::type('numeric')); 
+            ->with(Mockery::type('numeric'));
 
         $payload = ['email' => 'test@example.com', 'name' => 'John'];
-        
+
         $result = $service->sendWelcomeMailWithRetry($payload);
 
         $this->assertTrue($result['isSent']);
-        $this->assertEquals(2, $result['emailLog']->retries); 
+        $this->assertEquals(2, $result['emailLog']->retries);
         $this->assertEquals('sent', $result['emailLog']->status);
 
         $logSpy->shouldHaveReceived('warning')->once();
@@ -222,7 +227,7 @@ class NotificationTest extends TestCase
     public function test_it_fails_after_max_retries()
     {
         $maxRetries = NotificationService::MAX_RETRIES; // Берем константу из вашего класса
-        
+
         // Мокаем почту так, чтобы она падала ВСЕ разы
         $pendingMailMock = Mockery::mock(PendingMail::class);
         $pendingMailMock->shouldReceive('send')
@@ -236,12 +241,12 @@ class NotificationTest extends TestCase
 
         $logSpy = Log::spy();
 
-        /** @var NotificationService&\Mockery\MockInterface $service */
+        /** @var NotificationService&MockInterface $service */
         $service = Mockery::mock(NotificationService::class)->makePartial();
         $service->shouldAllowMockingProtectedMethods();
 
         $service->shouldReceive('sleepInTest')
-            ->times($maxRetries - 1); 
+            ->times($maxRetries - 1);
 
         $payload = ['email' => 'test@example.com'];
 
@@ -250,11 +255,11 @@ class NotificationTest extends TestCase
         $this->assertFalse($result['isSent']);
         $this->assertEquals('Critical SMTP Error', $result['lastError']);
         $this->assertEquals($maxRetries, $result['emailLog']->retries);
-        
+
         $this->assertEquals('pending', $result['emailLog']->status);
 
         $logSpy->shouldHaveReceived('warning')->times($maxRetries - 1);
-        
+
         $logSpy->shouldNotHaveReceived('info');
     }
 
@@ -277,7 +282,7 @@ class NotificationTest extends TestCase
 
         $sleeps = [];
 
-        /** @var NotificationService&\Mockery\MockInterface $service */
+        /** @var NotificationService&MockInterface $service */
         $service = Mockery::mock(NotificationService::class)->makePartial();
         $service->shouldAllowMockingProtectedMethods();
         $service->shouldReceive('sleepInTest')
@@ -293,5 +298,4 @@ class NotificationTest extends TestCase
 
         $this->assertSame([1, 2], $sleeps);
     }
-
 }

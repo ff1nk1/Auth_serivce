@@ -2,15 +2,16 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Models\OutboxEvent;
-use Junges\Kafka\Facades\Kafka;
+use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Junges\Kafka\Facades\Kafka;
 
 class KafkaOutboxWorker extends Command
 {
     protected $signature = 'kafka:outbox:work';
+
     protected $description = 'Читает события из таблицы outbox_events и отправляет их в Kafka';
 
     public function handle(): int

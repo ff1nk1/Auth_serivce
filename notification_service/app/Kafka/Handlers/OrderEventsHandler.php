@@ -2,11 +2,11 @@
 
 namespace App\Kafka\Handlers;
 
+use App\Events\OrderEventMovedToDlq;
 use App\Models\EmailLog;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Contracts\ConsumerMessage;
-use Junges\Kafka\Facades\Kafka;
 
 class OrderEventsHandler
 {
@@ -61,23 +61,6 @@ class OrderEventsHandler
             'error_message' => $errorMessage,
         ]);
 
-        try {
-            Kafka::publish(config('kafka.brokers', 'kafka:29092'))
-                ->onTopic('order.events.dlq')
-                ->withKafkaKey((string) $message->getKey())
-                ->withHeaders(array_merge($message->getHeaders() ?? [], [
-                    'dlq-reason' => $errorMessage,
-                    'dlq-failed-at' => now()->toIso8601String(),
-                ]))
-                ->withBody($message->getBody())
-                ->send();
-
-            Log::error('Сообщение не обработано и перенаправлено в DLQ (order.events.dlq)', [
-                'email' => $emailLog->email,
-                'error' => $errorMessage,
-            ]);
-        } catch (\Throwable $e) {
-            Log::critical('Не удалось опубликовать сообщение в DLQ топик: '.$e->getMessage());
-        }
+        event(new OrderEventMovedToDlq($message, $errorMessage, (string) $emailLog->email));
     }
 }

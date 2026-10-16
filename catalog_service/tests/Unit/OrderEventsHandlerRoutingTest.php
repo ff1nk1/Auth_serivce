@@ -81,4 +81,3 @@ class OrderEventsHandlerRoutingTest extends TestCase
         $this->addToAssertionCount(1);
     }
 }
-

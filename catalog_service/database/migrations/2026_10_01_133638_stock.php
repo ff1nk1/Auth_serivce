@@ -16,13 +16,13 @@ return new class extends Migration
 
             // Привязка к товару
             $table->foreignId('product_id')
-                  ->constrained('products')
-                  ->cascadeOnDelete();
+                ->constrained('products')
+                ->cascadeOnDelete();
 
             // Привязка к магазину/складу
             $table->foreignId('store_id')
-                  ->constrained('stores')
-                  ->cascadeOnDelete();
+                ->constrained('stores')
+                ->cascadeOnDelete();
 
             // Общий физический остаток на складе
             $table->unsignedInteger('quantity')->default(0);

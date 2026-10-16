@@ -19,7 +19,6 @@ Route::post('/webhooks/stripe', [GatewayController::class, 'stripeWebhook']);
 Route::get('/search/autocomplete', [GatewayController::class, 'searchAutocomplete']);
 Route::get('/search', [GatewayController::class, 'search']);
 
-
 Route::middleware(['ensure.token', 'cookie.token', 'auth:api'])->group(function () {
     Route::get('/user', [AuthController::class, 'get_user']);
     Route::post('/logout', [AuthController::class, 'logout']);

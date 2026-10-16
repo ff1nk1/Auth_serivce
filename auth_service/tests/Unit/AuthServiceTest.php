@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\Auth\AuthService;
 use App\Services\Auth\JwtService;
+use App\Services\Auth\TokenBlacklistService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
@@ -101,9 +102,11 @@ class AuthServiceTest extends TestCase
             ->with("refresh_token:{$hash}")
             ->andReturn(3600);
 
-        Redis::shouldReceive('setex')
-            ->once()
-            ->with("refresh_token:blacklist:{$hash}", 3600, '1');
+        $this->mock(TokenBlacklistService::class, function (MockInterface $mock) use ($hash) {
+            $mock->shouldReceive('blacklistRefreshToken')
+                ->once()
+                ->with($hash, 3600);
+        });
 
         Redis::shouldReceive('del')
             ->once()
@@ -123,10 +126,12 @@ class AuthServiceTest extends TestCase
         $refresh = 'used-refresh';
         $hash = hash('sha256', $refresh);
 
-        Redis::shouldReceive('exists')
-            ->once()
-            ->with("refresh_token:blacklist:{$hash}")
-            ->andReturn(1);
+        $this->mock(TokenBlacklistService::class, function (MockInterface $mock) use ($hash) {
+            $mock->shouldReceive('isRefreshTokenBlacklisted')
+                ->once()
+                ->with($hash)
+                ->andReturn(true);
+        });
 
         $this->assertNull(app(AuthService::class)->refreshTokens($refresh));
     }
@@ -136,10 +141,12 @@ class AuthServiceTest extends TestCase
         $refresh = 'unknown-refresh';
         $hash = hash('sha256', $refresh);
 
-        Redis::shouldReceive('exists')
-            ->once()
-            ->with("refresh_token:blacklist:{$hash}")
-            ->andReturn(0);
+        $this->mock(TokenBlacklistService::class, function (MockInterface $mock) use ($hash) {
+            $mock->shouldReceive('isRefreshTokenBlacklisted')
+                ->once()
+                ->with($hash)
+                ->andReturn(false);
+        });
 
         Redis::shouldReceive('get')
             ->once()

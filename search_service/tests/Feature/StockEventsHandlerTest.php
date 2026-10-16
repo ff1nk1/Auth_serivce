@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Kafka\Handlers\StockEventsHandler;
 use Junges\Kafka\Contracts\ConsumerMessage;
 use Mockery;
+use Mockery\MockInterface;
 use OpenSearch\Client;
 use OpenSearch\Namespaces\IndicesNamespace;
 use Tests\TestCase;
@@ -106,7 +107,7 @@ class StockEventsHandlerTest extends TestCase
             ->assertSuccessful();
     }
 
-    private function mockClientWithExistingIndices(): Client&\Mockery\MockInterface
+    private function mockClientWithExistingIndices(): Client&MockInterface
     {
         $indices = Mockery::mock(IndicesNamespace::class);
         $indices->shouldReceive('exists')->andReturn(true);

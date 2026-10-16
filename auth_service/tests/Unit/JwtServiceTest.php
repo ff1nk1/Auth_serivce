@@ -5,13 +5,14 @@ namespace Tests\Unit;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Auth\JwtService;
+use App\Services\Auth\TokenBlacklistService;
 use Firebase\JWT\ExpiredException;
 use Firebase\JWT\JWT;
 use Firebase\JWT\SignatureInvalidException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Redis;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class JwtServiceTest extends TestCase
@@ -28,7 +29,7 @@ class JwtServiceTest extends TestCase
         Config::set('jwt.algorithm', 'HS256');
         Config::set('jwt.ttl', 15);
 
-        $this->jwtService = new JwtService;
+        $this->jwtService = app(JwtService::class);
     }
 
     public function test_create_access_token_contains_expected_claims(): void
@@ -85,16 +86,19 @@ class JwtServiceTest extends TestCase
         Role::factory()->create(['id' => 1, 'slug' => 'customer', 'name' => 'Customer']);
         $user = User::factory()->create(['role_id' => 1]);
         $token = $this->jwtService->createAccessToken($user);
+        $payload = $this->jwtService->decode($token);
 
         $request = Request::create('/api/test', 'GET');
         $request->headers->set('Authorization', "Bearer {$token}");
 
-        Redis::shouldReceive('exists')
-            ->once()
-            ->withArgs(fn (string $key) => str_starts_with($key, 'jwt:blacklist:'))
-            ->andReturn(0);
+        $this->mock(TokenBlacklistService::class, function (MockInterface $mock) use ($payload) {
+            $mock->shouldReceive('isJwtBlacklisted')
+                ->once()
+                ->with($payload->jti)
+                ->andReturn(false);
+        });
 
-        $result = $this->jwtService->userFromRequest($request);
+        $result = app(JwtService::class)->userFromRequest($request);
 
         $this->assertNotNull($result);
         $this->assertEquals($user->id, $result->id);
@@ -109,11 +113,13 @@ class JwtServiceTest extends TestCase
         $request = Request::create('/api/test', 'GET');
         $request->cookies->set('access_token', $token);
 
-        Redis::shouldReceive('exists')
-            ->once()
-            ->andReturn(0);
+        $this->mock(TokenBlacklistService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('isJwtBlacklisted')
+                ->once()
+                ->andReturn(false);
+        });
 
-        $result = $this->jwtService->userFromRequest($request);
+        $result = app(JwtService::class)->userFromRequest($request);
 
         $this->assertNotNull($result);
         $this->assertEquals($user->id, $result->id);
@@ -128,9 +134,11 @@ class JwtServiceTest extends TestCase
         $request = Request::create('/api/test', 'GET');
         $request->headers->set('Authorization', "Bearer {$token}");
 
-        Redis::shouldReceive('exists')->once()->andReturn(1);
+        $this->mock(TokenBlacklistService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('isJwtBlacklisted')->once()->andReturn(true);
+        });
 
-        $this->assertNull($this->jwtService->userFromRequest($request));
+        $this->assertNull(app(JwtService::class)->userFromRequest($request));
     }
 
     public function test_revoke_token_writes_jti_to_redis_blacklist(): void
@@ -140,21 +148,23 @@ class JwtServiceTest extends TestCase
         $token = $this->jwtService->createAccessToken($user);
         $payload = $this->jwtService->decode($token);
 
-        Redis::shouldReceive('setex')
-            ->once()
-            ->withArgs(function (string $key, int $ttl, string $value) use ($payload) {
-                return $key === "jwt:blacklist:{$payload->jti}"
-                    && $ttl > 0
-                    && $value === '1';
-            });
+        $this->mock(TokenBlacklistService::class, function (MockInterface $mock) use ($payload) {
+            $mock->shouldReceive('blacklistJwt')
+                ->once()
+                ->withArgs(function (string $jti, int $ttl) use ($payload) {
+                    return $jti === $payload->jti && $ttl > 0;
+                });
+        });
 
-        $this->jwtService->revokeToken($token);
+        app(JwtService::class)->revokeToken($token);
     }
 
     public function test_revoke_token_is_noop_for_invalid_token(): void
     {
-        Redis::shouldReceive('setex')->never();
+        $this->mock(TokenBlacklistService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('blacklistJwt')->never();
+        });
 
-        $this->jwtService->revokeToken('not-a-jwt');
+        app(JwtService::class)->revokeToken('not-a-jwt');
     }
 }

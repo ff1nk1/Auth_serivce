@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 class AuthController extends Controller
 {
     use AuthorizesRequests;
+
     public function __construct(
         private AuthService $authService
     ) {}

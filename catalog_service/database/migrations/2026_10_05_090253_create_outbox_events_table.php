@@ -13,14 +13,14 @@ return new class extends Migration
     {
         Schema::create('outbox_events', function (Blueprint $table) {
             $table->id();
-            
-            $table->string('topic'); 
-            
-            $table->string('event_type'); 
-            
-            $table->json('payload'); 
-            
-            $table->timestamps(); 
+
+            $table->string('topic');
+
+            $table->string('event_type');
+
+            $table->json('payload');
+
+            $table->timestamps();
         });
     }
 

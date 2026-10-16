@@ -2,10 +2,10 @@
 
 namespace App\Kafka\MainHandlers;
 
-use Junges\Kafka\Contracts\ConsumerMessage;
-use Illuminate\Support\Facades\Log;
 use App\Kafka\Handlers\OrderCreatedHandler;
 use App\Kafka\Handlers\StockReleaseHandler;
+use Illuminate\Support\Facades\Log;
+use Junges\Kafka\Contracts\ConsumerMessage;
 
 class OrderEventsHandler
 {

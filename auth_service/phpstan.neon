@@ -1,0 +1,23 @@
+includes:
+    - ../vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 5
+    tmpDir: ../.phpstan.cache/auth_service
+
+    paths:
+        - app
+        - bootstrap
+        - config
+        - database
+        - routes
+        - tests
+
+    excludePaths:
+        - vendor/*
+        - storage/*
+        - bootstrap/cache/*
+        - node_modules/*
+        - public/*
+        - _ide_helper.php (?)
+        - _ide_helper_models.php (?)

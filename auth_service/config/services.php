@@ -37,23 +37,43 @@ return [
 
     'catalog' => [
         'url' => env('CATALOG_SERVICE_URL', 'http://catalog_service_app:8002'),
+        'paths' => [
+            'storefront' => '/api/catalog',
+            'admin_api' => '/api/admin',
+            'admin_panel' => '/admin-catalog',
+            'upload_url' => '/api/get-upload-url',
+        ],
     ],
 
     'notification' => [
         'url' => env('NOTIFICATION_SERVICE_URL', 'http://notification_service_app:8003'),
+        'paths' => [
+            'index' => '/api/notifications',
+        ],
     ],
 
     'order' => [
         'url' => env('ORDER_SERVICE_URL', 'http://order_service_app:8004'),
+        'paths' => [
+            'customer' => '/api/orders',
+            'admin' => '/api/admin/orders',
+            'stripe_webhook' => '/api/webhooks/stripe',
+        ],
     ],
 
     'search' => [
         'url' => env('SEARCH_SERVICE_URL', 'http://search_service_app:8005'),
+        'paths' => [
+            'search' => '/api/search',
+            'autocomplete' => '/api/search/autocomplete',
+        ],
     ],
 
     'analytic' => [
         'url' => env('ANALYTIC_SERVICE_URL', 'http://analytic_service_api:8006'),
+        'paths' => [
+            'index' => '/analytics',
+        ],
     ],
 
 ];
-

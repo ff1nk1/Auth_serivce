@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Order;
-use App\Models\Payment;
 use App\Models\ProductSnapshot;
 use App\Services\Stripe\StripeClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;

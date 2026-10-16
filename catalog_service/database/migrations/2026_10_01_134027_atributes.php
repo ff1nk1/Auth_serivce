@@ -16,8 +16,8 @@ return new class extends Migration
 
             // Связь с товаром
             $table->foreignId('product_id')
-                  ->constrained('products')
-                  ->cascadeOnDelete();
+                ->constrained('products')
+                ->cascadeOnDelete();
 
             $table->string('name');  // Название (например: "Процессор", "Цвет", "Вес")
             $table->string('value'); // Значение (например: "Intel i7", "Синий", "1.5 кг")

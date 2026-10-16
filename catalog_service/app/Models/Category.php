@@ -48,37 +48,38 @@ class Category extends Model
     }
 
     public function products()
-{
-    // У одной категории может быть много товаров
-    return $this->hasMany(Product::class);
-}
+    {
+        // У одной категории может быть много товаров
+        return $this->hasMany(Product::class);
+    }
+
     /**
      * Получить ID текущей категории и всех её подкатегорий (рекурсивно)
      */
     public function getTreeIds(): array
     {
         // Кэшируем массив ID для каждой отдельной категории
-        return Cache::tags(['categories'])->remember("category_tree_ids_{$this->id}",7200, function () {
-            
+        return Cache::tags(['categories'])->remember("category_tree_ids_{$this->id}", 7200, function () {
+
             // Начинаем с ID самой категории (например, "Компьютеры")
-            $ids = [$this->id]; 
-            
+            $ids = [$this->id];
+
             // Подгружаем всё дерево подкатегорий из БД
-            $this->load('allChildren'); 
-            
+            $this->load('allChildren');
+
             // Запускаем рекурсивную функцию для обхода дерева
             $collectIds = function ($categories) use (&$collectIds, &$ids) {
                 foreach ($categories as $category) {
                     $ids[] = $category->id; // Добавляем ID ребенка
-                    
+
                     if ($category->allChildren->isNotEmpty()) {
                         $collectIds($category->allChildren); // Идем глубже
                     }
                 }
             };
-            
+
             $collectIds($this->allChildren);
-            
+
             return $ids;
         });
     }

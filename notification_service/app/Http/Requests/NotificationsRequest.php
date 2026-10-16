@@ -23,10 +23,10 @@ class NotificationsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status'    => 'nullable|string',
-            'email'     => 'nullable|string',
+            'status' => 'nullable|string',
+            'email' => 'nullable|string',
             'date_from' => 'nullable|date',
-            'date_to'   => 'nullable|date|after_or_equal:date_from',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
         ];
     }
 }

@@ -11,54 +11,90 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ProxyService
 {
+    /** @var list<string> */
+    private const JSON_FORWARD_HEADERS = ['Content-Type', 'Idempotency-Key'];
+
+    /** @var list<string> */
+    private const RAW_FORWARD_HEADERS = ['Content-Type', 'Stripe-Signature'];
+
+    /** @var list<string> */
+    private const HTML_PASSTHROUGH_HEADERS = [
+        'Accept',
+        'Accept-Language',
+        'Content-Type',
+        'X-Livewire',
+        'X-CSRF-TOKEN',
+        'X-XSRF-TOKEN',
+        'Referer',
+        'Origin',
+        'Cookie',
+    ];
+
+    /** @var list<string> */
+    private const HTML_RESPONSE_HEADERS = [
+        'Content-Type',
+        'Content-Disposition',
+        'Cache-Control',
+        'Pragma',
+        'Expires',
+        'Location',
+    ];
+
+    /** @var list<string> */
+    private const QUERY_ONLY_METHODS = ['get', 'delete', 'head'];
+
+    /**
+     * Join a configured path prefix with an optional route suffix.
+     * joinPath('/api/catalog', 'products/1') => '/api/catalog/products/1'
+     * joinPath('/api/catalog', '') => '/api/catalog'
+     */
+    public function joinPath(string $prefix, string $suffix = ''): string
+    {
+        $prefix = '/'.trim($prefix, '/');
+        $suffix = trim($suffix, '/');
+
+        return $suffix === '' ? $prefix : $prefix.'/'.$suffix;
+    }
+
+    /**
+     * Build absolute upstream URL from service base URL and path.
+     */
+    public function buildUrl(string $baseUrl, string $path): string
+    {
+        return rtrim($baseUrl, '/').'/'.ltrim($path, '/');
+    }
+
     /**
      * Forward the incoming request to an internal microservice and return its response.
      *
      * @param  array{id: int, email?: string|null, name?: string|null}|null  $injectUser
-     *         When set, merges user_id (and email/name when present) into query and JSON body.
+     *                                                                                    When set, merges user_id (and email/name when present) into query and JSON body.
      */
     public function forward(Request $request, string $baseUrl, string $path, ?array $injectUser = null): Response
     {
-        $url = rtrim($baseUrl, '/').'/'.ltrim($path, '/');
-
-        $pending = Http::withHeaders($this->forwardHeaders($request))
-            ->acceptJson()
-            ->timeout(30);
-
+        $url = $this->buildUrl($baseUrl, $path);
         $method = strtolower($request->method());
         $query = $request->query();
         $body = $request->all();
 
         if ($injectUser !== null) {
-            $query['user_id'] = $injectUser['id'];
-            $body['user_id'] = $injectUser['id'];
-
-            if (isset($injectUser['email']) && is_string($injectUser['email']) && $injectUser['email'] !== '') {
-                $query['email'] = $injectUser['email'];
-                $body['email'] = $injectUser['email'];
-            }
-
-            if (isset($injectUser['name']) && is_string($injectUser['name']) && $injectUser['name'] !== '') {
-                $query['name'] = $injectUser['name'];
-                $body['name'] = $injectUser['name'];
-            }
+            [$query, $body] = $this->mergeInjectedUser($query, $body, $injectUser);
         }
 
+        $pending = Http::withHeaders($this->jsonForwardHeaders($request))
+            ->acceptJson()
+            ->asJson()
+            ->timeout(30);
+
+        $options = in_array($method, self::QUERY_ONLY_METHODS, true)
+            ? ['query' => $query]
+            : ['json' => $body];
+
         /** @var HttpResponse $upstream */
-        $upstream = match ($method) {
-            'get' => $pending->get($url, $query),
-            'delete' => $pending->delete($url, $query),
-            'post' => $pending->asJson()->post($url, $body),
-            'put' => $pending->asJson()->put($url, $body),
-            'patch' => $pending->asJson()->patch($url, $body),
-            default => $pending->send($method, $url, [
-                'query' => $query,
-                'json' => $body,
-            ]),
-        };
+        $upstream = $pending->send($method, $url, $options);
 
         return response($upstream->body(), $upstream->status())
-            ->withHeaders($this->responseHeaders($upstream));
+            ->withHeaders($this->jsonResponseHeaders($upstream));
     }
 
     /**
@@ -68,12 +104,109 @@ class ProxyService
      */
     public function forwardHtml(Request $request, string $baseUrl, string $path, array $identity): Response
     {
-        $url = rtrim($baseUrl, '/').'/'.ltrim($path, '/');
+        $url = $this->buildUrl($baseUrl, $path);
 
         if ($query = $request->getQueryString()) {
             $url .= '?'.$query;
         }
 
+        $headers = array_merge(
+            $this->htmlIdentityHeaders($request, $identity),
+            $this->htmlPassthroughHeaders($request),
+        );
+
+        $upstream = $this->sendHtml($request, $url, $headers);
+
+        return $this->htmlResponse($upstream);
+    }
+
+    /**
+     * Forward raw request body (e.g. Stripe webhooks) without re-encoding JSON.
+     */
+    public function forwardRaw(Request $request, string $baseUrl, string $path): Response
+    {
+        $url = $this->buildUrl($baseUrl, $path);
+
+        $headers = [
+            'Accept' => 'application/json',
+            'X-Forwarded-For' => $request->ip() ?? '',
+            'X-Forwarded-Proto' => $request->getScheme(),
+        ];
+
+        foreach (self::RAW_FORWARD_HEADERS as $name) {
+            if ($request->hasHeader($name)) {
+                $headers[$name] = (string) $request->header($name);
+            }
+        }
+
+        /** @var HttpResponse $upstream */
+        $upstream = Http::withHeaders(array_filter($headers))
+            ->withBody($request->getContent(), (string) ($request->header('Content-Type') ?: 'application/json'))
+            ->timeout(30)
+            ->send($request->method(), $url);
+
+        return response($upstream->body(), $upstream->status())
+            ->withHeaders($this->jsonResponseHeaders($upstream));
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @param  array<string, mixed>  $body
+     * @param  array{id: int, email?: string|null, name?: string|null}  $injectUser
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
+     */
+    private function mergeInjectedUser(array $query, array $body, array $injectUser): array
+    {
+        $query['user_id'] = $injectUser['id'];
+        $body['user_id'] = $injectUser['id'];
+
+        foreach (['email', 'name'] as $field) {
+            $value = $injectUser[$field] ?? null;
+            if (is_string($value) && $value !== '') {
+                $query[$field] = $value;
+                $body[$field] = $value;
+            }
+        }
+
+        return [$query, $body];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function jsonForwardHeaders(Request $request): array
+    {
+        $headers = [
+            'Accept' => 'application/json',
+            'X-Forwarded-For' => $request->ip() ?? '',
+            'X-Forwarded-Proto' => $request->getScheme(),
+        ];
+
+        foreach (self::JSON_FORWARD_HEADERS as $name) {
+            if ($request->hasHeader($name)) {
+                $headers[$name] = (string) $request->header($name);
+            }
+        }
+
+        return array_filter($headers);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function jsonResponseHeaders(HttpResponse $upstream): array
+    {
+        $contentType = $upstream->header('Content-Type');
+
+        return $contentType ? ['Content-Type' => $contentType] : [];
+    }
+
+    /**
+     * @param  array{id: int, role: string, name?: string, email?: string}  $identity
+     * @return array<string, string>
+     */
+    private function htmlIdentityHeaders(Request $request, array $identity): array
+    {
         $publicHost = $request->getHost();
         $publicPort = $request->getPort();
         $hostHeader = $publicHost;
@@ -99,70 +232,83 @@ class ProxyService
             $headers['X-User-Email'] = (string) $identity['email'];
         }
 
-        foreach (['Accept', 'Accept-Language', 'Content-Type', 'X-Livewire', 'X-CSRF-TOKEN', 'X-XSRF-TOKEN', 'Referer', 'Origin'] as $name) {
+        return $headers;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function htmlPassthroughHeaders(Request $request): array
+    {
+        $headers = [];
+
+        foreach (self::HTML_PASSTHROUGH_HEADERS as $name) {
             if ($request->headers->has($name)) {
                 $headers[$name] = (string) $request->header($name);
             }
         }
 
-        if ($request->headers->has('Cookie')) {
-            $headers['Cookie'] = (string) $request->header('Cookie');
-        }
+        return $headers;
+    }
 
+    /**
+     * @param  array<string, string|null>  $headers
+     */
+    private function sendHtml(Request $request, string $url, array $headers): HttpResponse
+    {
         $method = strtoupper($request->method());
         $files = $request->allFiles();
 
         // multipart/form-data leaves php://input empty after PHP parses $_FILES —
         // rebuild the body from uploaded files instead of getContent().
         if ($files !== [] && ! in_array($method, ['GET', 'HEAD'], true)) {
-            unset($headers['Content-Type']);
-
-            $pending = Http::withHeaders(array_filter($headers, fn ($value) => $value !== null && $value !== ''))
-                ->withOptions(['allow_redirects' => false])
-                ->timeout(60);
-
-            $this->attachUploadedFiles($pending, $files);
-
-            /** @var HttpResponse $upstream */
-            $upstream = match ($method) {
-                'POST' => $pending->post($url, $request->request->all()),
-                'PUT' => $pending->put($url, $request->request->all()),
-                'PATCH' => $pending->patch($url, $request->request->all()),
-                default => $pending->send($method, $url, [
-                    'multipart' => $this->multipartFields($request->request->all()),
-                ]),
-            };
-
-            return $this->htmlResponse($upstream);
+            return $this->sendMultipart($request, $url, $headers, $files);
         }
 
-        $pending = Http::withHeaders(array_filter($headers, fn ($value) => $value !== null && $value !== ''))
+        $pending = Http::withHeaders($this->nonEmptyHeaders($headers))
             ->withOptions(['allow_redirects' => false])
             ->timeout(60);
 
         $content = $request->getContent();
         $contentType = (string) ($request->header('Content-Type') ?: 'application/octet-stream');
 
-        /** @var HttpResponse $upstream */
         if ($content !== '' && ! in_array($method, ['GET', 'HEAD'], true)) {
-            $upstream = $pending->withBody($content, $contentType)->send($method, $url);
-        } else {
-            $upstream = $pending->send($method, $url);
+            return $pending->withBody($content, $contentType)->send($method, $url);
         }
 
-        return $this->htmlResponse($upstream);
+        return $pending->send($method, $url);
+    }
+
+    /**
+     * @param  array<string, string|null>  $headers
+     * @param  array<string, mixed>  $files
+     */
+    private function sendMultipart(Request $request, string $url, array $headers, array $files): HttpResponse
+    {
+        unset($headers['Content-Type']);
+
+        $pending = Http::withHeaders($this->nonEmptyHeaders($headers))
+            ->withOptions(['allow_redirects' => false])
+            ->timeout(60);
+
+        $this->attachFilesRecursive($pending, $files);
+
+        // attach() sets bodyFormat to multipart; form fields merge with pending files in send().
+        return $pending->send(strtoupper($request->method()), $url, [
+            'multipart' => $request->request->all(),
+        ]);
     }
 
     /**
      * @param  array<string, mixed>  $files
      */
-    private function attachUploadedFiles(PendingRequest $pending, array $files, string $prefix = ''): void
+    private function attachFilesRecursive(PendingRequest $pending, array $files, string $prefix = ''): void
     {
         foreach ($files as $key => $file) {
             $name = $prefix === '' ? (string) $key : "{$prefix}[{$key}]";
 
             if (is_array($file)) {
-                $this->attachUploadedFiles($pending, $file, $name);
+                $this->attachFilesRecursive($pending, $file, $name);
 
                 continue;
             }
@@ -181,108 +327,20 @@ class ProxyService
     }
 
     /**
-     * Flatten request fields into Guzzle multipart name/contents pairs.
-     *
-     * @param  array<string, mixed>  $fields
-     * @return list<array{name: string, contents: string}>
-     */
-    private function multipartFields(array $fields, string $prefix = ''): array
-    {
-        $parts = [];
-
-        foreach ($fields as $key => $value) {
-            $name = $prefix === '' ? (string) $key : "{$prefix}[{$key}]";
-
-            if (is_array($value)) {
-                $parts = array_merge($parts, $this->multipartFields($value, $name));
-
-                continue;
-            }
-
-            $parts[] = [
-                'name' => $name,
-                'contents' => is_scalar($value) || $value === null ? (string) $value : '',
-            ];
-        }
-
-        return $parts;
-    }
-
-    /**
-     * Forward raw request body (e.g. Stripe webhooks) without re-encoding JSON.
-     */
-    public function forwardRaw(Request $request, string $baseUrl, string $path): Response
-    {
-        $url = rtrim($baseUrl, '/').'/'.ltrim($path, '/');
-
-        $headers = [
-            'Accept' => 'application/json',
-            'X-Forwarded-For' => $request->ip() ?? '',
-            'X-Forwarded-Proto' => $request->getScheme(),
-        ];
-
-        if ($request->hasHeader('Content-Type')) {
-            $headers['Content-Type'] = (string) $request->header('Content-Type');
-        }
-
-        if ($request->hasHeader('Stripe-Signature')) {
-            $headers['Stripe-Signature'] = (string) $request->header('Stripe-Signature');
-        }
-
-        /** @var HttpResponse $upstream */
-        $upstream = Http::withHeaders(array_filter($headers))
-            ->withBody($request->getContent(), (string) ($request->header('Content-Type') ?: 'application/json'))
-            ->timeout(30)
-            ->send($request->method(), $url);
-
-        return response($upstream->body(), $upstream->status())
-            ->withHeaders($this->responseHeaders($upstream));
-    }
-
-    /**
+     * @param  array<string, string|null>  $headers
      * @return array<string, string>
      */
-    private function forwardHeaders(Request $request): array
+    private function nonEmptyHeaders(array $headers): array
     {
-        $headers = [
-            'Accept' => 'application/json',
-            'X-Forwarded-For' => $request->ip() ?? '',
-            'X-Forwarded-Proto' => $request->getScheme(),
-        ];
-
-        if ($request->hasHeader('Content-Type')) {
-            $headers['Content-Type'] = $request->header('Content-Type');
-        }
-
-        if ($request->hasHeader('Idempotency-Key')) {
-            $headers['Idempotency-Key'] = (string) $request->header('Idempotency-Key');
-        }
-
-        return array_filter($headers);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function responseHeaders(HttpResponse $upstream): array
-    {
-        $headers = [];
-        $contentType = $upstream->header('Content-Type');
-
-        if ($contentType) {
-            $headers['Content-Type'] = $contentType;
-        }
-
-        return $headers;
+        return array_filter($headers, fn ($value) => $value !== null && $value !== '');
     }
 
     private function htmlResponse(HttpResponse $upstream): Response
     {
         $response = response($upstream->body(), $upstream->status());
-
         $psr = $upstream->toPsrResponse();
 
-        foreach (['Content-Type', 'Content-Disposition', 'Cache-Control', 'Pragma', 'Expires', 'Location'] as $name) {
+        foreach (self::HTML_RESPONSE_HEADERS as $name) {
             foreach ($psr->getHeader($name) as $value) {
                 $response->headers->set($name, $value, false);
             }

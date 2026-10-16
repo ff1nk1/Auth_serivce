@@ -2,12 +2,14 @@
 
 namespace App\Services;
 
+use App\Events\ProductCreated;
+use App\Events\ProductDeleted;
+use App\Events\ProductPublishStateChanged;
+use App\Events\ProductUpdated;
 use App\Models\Product;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Junges\Kafka\Facades\Kafka;
 
 class ProductService
 {
@@ -23,7 +25,7 @@ class ProductService
         });
 
         $this->clearProductCache();
-        $this->publishToTopic('product.created', $product);
+        event(new ProductCreated($product));
 
         return $product;
     }
@@ -42,7 +44,7 @@ class ProductService
         });
 
         $this->clearProductCache();
-        $this->publishToTopic('product.updated', $product);
+        event(new ProductUpdated($product));
 
         return $product;
     }
@@ -56,7 +58,7 @@ class ProductService
         $product->delete();
 
         $this->clearProductCache();
-        $this->publishToTopic('product.deleted', $productData);
+        event(new ProductDeleted($productData));
     }
 
     public function togglePublished(Product $product): Product
@@ -67,10 +69,10 @@ class ProductService
         $product = $product->fresh(['store', 'category', 'attributes']) ?? $product;
 
         $this->clearProductCache();
-        $this->publishToTopic(
+        event(new ProductPublishStateChanged(
+            $product,
             $product->is_published ? 'product.published' : 'product.unpublished',
-            $product
-        );
+        ));
 
         return $product;
     }
@@ -82,7 +84,7 @@ class ProductService
 
     /**
      * @param  array<string, mixed>  $data
-     * @return list<array{name: string, value: string}>|null  null = attributes key absent (do not sync)
+     * @return list<array{name: string, value: string}>|null null = attributes key absent (do not sync)
      */
     protected function extractAttributes(array &$data): ?array
     {
@@ -128,41 +130,5 @@ class ProductService
         }
 
         $product->attributes()->createMany($attributes);
-    }
-
-    /**
-     * Публикация события в Kafka с использованием рабочего конфига.
-     */
-    protected function publishToTopic(string $topic, Product $product): void
-    {
-        try {
-            $product->loadMissing(['store', 'category', 'attributes']);
-
-            Kafka::publish(config('kafka.brokers', 'kafka:29092'))
-                ->onTopic($topic)
-                ->withConfigOptions([
-                    'socket.timeout.ms' => 60000,
-                    'message.timeout.ms' => 60000,
-                    'request.timeout.ms' => 30000,
-                    'retries' => 10,
-                    'retry.backoff.ms' => 1000,
-                ])
-                ->withKafkaKey((string) $product->id)
-                ->withHeaders([
-                    'event-type' => $topic,
-                    'source' => 'catalog-service',
-                ])
-                ->withBody([
-                    'event' => $topic,
-                    'timestamp' => now()->toIso8601String(),
-                    'data' => $product->toArray(),
-                ])
-                ->send();
-        } catch (\Throwable $e) {
-            Log::error("Kafka publish failed on {$topic}", [
-                'product_id' => $product->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 }

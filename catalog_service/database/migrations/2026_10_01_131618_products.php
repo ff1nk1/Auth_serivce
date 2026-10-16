@@ -13,21 +13,21 @@ return new class extends Migration
     {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
-            
+
             // Внешний ключ для связи с таблицей stores
             $table->foreignId('store_id')
-                  ->constrained('stores')
-                  ->cascadeOnDelete(); // Если удалить магазин, удалятся и его товары
+                ->constrained('stores')
+                ->cascadeOnDelete(); // Если удалить магазин, удалятся и его товары
 
             $table->foreignId('category_id')->nullable()
-                    ->constrained('categories')
-                    ->nullOnDelete();
+                ->constrained('categories')
+                ->nullOnDelete();
 
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('image_url')->nullable(); // Ссылка на картинку
             $table->decimal('price', 10, 2)->unsigned()->default(0); // Цена товара (например, 999.99)
-            
+
             $table->timestamps();
         });
     }

@@ -5,8 +5,10 @@ namespace App\Services\Stripe;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Stripe\Webhook;
 use UnexpectedValueException;
-//stripe listen --forward-to https://app.localhost/api/webhooks/stripe --skip-verify
+
+// stripe listen --forward-to https://app.localhost/api/webhooks/stripe --skip-verify
 /**
  * Thin Stripe API client (secret-key auth). Prefer this over shipping JWT to Stripe.
  * Uses stripe/stripe-php for webhook verification when installed; falls back to HMAC.
@@ -33,8 +35,8 @@ class StripeClient
             throw new RuntimeException('STRIPE_WEBHOOK_SECRET is not configured.');
         }
 
-        if (class_exists(\Stripe\Webhook::class)) {
-            $event = \Stripe\Webhook::constructEvent($payload, $signatureHeader, $secret);
+        if (class_exists(Webhook::class)) {
+            $event = Webhook::constructEvent($payload, $signatureHeader, $secret);
 
             return $event->toArray();
         }

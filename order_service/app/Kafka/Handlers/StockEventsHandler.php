@@ -2,9 +2,9 @@
 
 namespace App\Kafka\Handlers;
 
+use App\Events\OrderCancelled;
 use App\Models\Order;
 use App\Services\OrderService;
-use App\Services\OutboxWriter;
 use App\Services\SagaStepGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,7 +13,6 @@ use Junges\Kafka\Contracts\ConsumerMessage;
 class StockEventsHandler
 {
     public function __construct(
-        private OutboxWriter $outbox,
         private SagaStepGuard $saga,
         private OrderService $orders,
     ) {}
@@ -110,7 +109,7 @@ class StockEventsHandler
         }
 
         try {
-            DB::transaction(function () use ($orderId, $sagaId) {
+            DB::transaction(function () use ($orderId) {
                 $order = Order::query()->lockForUpdate()->find((int) $orderId);
                 if ($order === null || $order->status !== 'pending') {
                     return;
@@ -119,11 +118,9 @@ class StockEventsHandler
                 $order->status = 'cancelled';
                 $order->save();
 
-                $this->outbox->write(
-                    'order.events',
-                    'order.cancelled',
+                event(new OrderCancelled(
                     $this->orders->notificationPayload($order, ['reason' => 'insufficient_stock'])
-                );
+                ));
             });
 
             if ($sagaId !== null) {

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Services\SearchIndexService;
+use Junges\Kafka\Facades\Kafka;
 use Mockery;
 use OpenSearch\Client;
 use OpenSearch\Namespaces\IndicesNamespace;
@@ -104,12 +106,11 @@ class SearchApiTest extends TestCase
             ],
         ]);
 
-
         $this->app->instance(Client::class, $client);
 
         // Avoid real Kafka in HTTP test — fake via facade if package available
-        if (class_exists(\Junges\Kafka\Facades\Kafka::class)) {
-            \Junges\Kafka\Facades\Kafka::fake();
+        if (class_exists(Kafka::class)) {
+            Kafka::fake();
         }
 
         $response = $this->getJson('/api/search?q=phone&category_id=3&in_stock=1&attr[Color]=Black');
@@ -124,8 +125,8 @@ class SearchApiTest extends TestCase
             ->assertJsonPath('facets.attributes.Color.0.value', 'Black')
             ->assertJsonPath('applied.q', 'phone');
 
-        if (class_exists(\Junges\Kafka\Facades\Kafka::class)) {
-            \Junges\Kafka\Facades\Kafka::assertPublishedOn('search.events', null, function ($message) {
+        if (class_exists(Kafka::class)) {
+            Kafka::assertPublishedOn('search.events', null, function ($message) {
                 return ($message->getHeaders()['event-type'] ?? null) === 'search.performed'
                     && ($message->getBody()['data']['results_count'] ?? null) === 1
                     && ($message->getBody()['data']['query'] ?? null) === 'phone';
@@ -151,7 +152,7 @@ class SearchApiTest extends TestCase
 
         $this->app->instance(Client::class, $client);
 
-        app(\App\Services\SearchIndexService::class)->indexProduct([
+        app(SearchIndexService::class)->indexProduct([
             'id' => 1,
             'name' => 'Phone',
             'store_id' => 1,

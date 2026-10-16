@@ -2,8 +2,7 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
-use Junges\Kafka\Facades\Kafka;
+use App\Events\SearchPerformed;
 use OpenSearch\Client;
 
 class ProductSearchService
@@ -118,7 +117,7 @@ class ProductSearchService
             ],
         ];
 
-        $this->publishSearchPerformed($params, $total, $skipAnalytics);
+        event(new SearchPerformed($params, $total, $skipAnalytics));
 
         return $result;
     }
@@ -379,57 +378,5 @@ class ProductSearchService
             'availability' => $availability,
             'attributes' => $attributes,
         ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $params
-     */
-    private function publishSearchPerformed(array $params, int $resultsCount, bool $skipAnalytics = false): void
-    {
-        try {
-            $headers = [
-                'event-type' => 'search.performed',
-                'source' => 'search-service',
-            ];
-            if ($skipAnalytics) {
-                $headers['skip-analytics'] = 'true';
-            }
-
-            $body = [
-                'event' => 'search.performed',
-                'event_type' => 'search.performed',
-                'timestamp' => now()->toIso8601String(),
-                'skip_analytics' => $skipAnalytics,
-                'data' => [
-                    'query' => $params['q'],
-                    'filters' => [
-                        'category_ids' => $params['category_ids'],
-                        'min_price' => $params['min_price'],
-                        'max_price' => $params['max_price'],
-                        'in_stock' => $params['in_stock'],
-                        'attributes' => $params['attributes'],
-                    ],
-                    'results_count' => $resultsCount,
-                    'sort' => $params['sort'],
-                ],
-            ];
-
-            Kafka::publish(config('kafka.brokers', 'kafka:29092'))
-                ->onTopic('search.events')
-                ->withConfigOptions([
-                    'socket.timeout.ms' => 60000,
-                    'message.timeout.ms' => 60000,
-                    'request.timeout.ms' => 30000,
-                    'retries' => 3,
-                    'retry.backoff.ms' => 500,
-                ])
-                ->withHeaders($headers)
-                ->withBody($body)
-                ->send();
-        } catch (\Throwable $e) {
-            Log::error('Kafka publish failed on search.performed', [
-                'error' => $e->getMessage(),
-            ]);
-        }
     }
 }

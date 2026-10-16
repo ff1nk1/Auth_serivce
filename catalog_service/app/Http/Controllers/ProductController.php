@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
-use Illuminate\Http\JsonResponse;
 use App\Services\ProductService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-
 
 class ProductController extends Controller
 {
@@ -40,15 +39,15 @@ class ProductController extends Controller
         return response()->json(['message' => 'Товар добавлен', 'product' => $product], 201);
     }
 
-
     public function show($id)
-{   //Когда память редиса заполнится, он будет убирать самые редко вызываемые
-    $product = Cache::tags(['products'])->remember("product_{$id}", 86400, function () use ($id) {
-        return Product::with(['category', 'store', 'attributes'])->findOrFail($id)->toArray();
-    });
+    {   // Когда память редиса заполнится, он будет убирать самые редко вызываемые
+        $product = Cache::tags(['products'])->remember("product_{$id}", 86400, function () use ($id) {
+            return Product::with(['category', 'store', 'attributes'])->findOrFail($id)->toArray();
+        });
 
-    return response()->json(['product' => $product]);
-}
+        return response()->json(['product' => $product]);
+    }
+
     // PUT/PATCH /api/admin/products/{product}
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
@@ -64,7 +63,7 @@ class ProductController extends Controller
     {
         // Сервис удалит товар и отправит старые данные в Kafka
         $this->productService->deleteProduct($product);
-        
+
         return response()->json(['message' => 'Товар удален']);
     }
 }

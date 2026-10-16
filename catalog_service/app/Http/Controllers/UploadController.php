@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\GetUploadUrlRequest;
+use Illuminate\Filesystem\AwsS3V3Adapter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -16,7 +17,7 @@ class UploadController extends Controller
         $fileName = Str::uuid().'.'.$extension;
         $path = 'uploads/'.$fileName;
 
-        /** @var \Illuminate\Filesystem\AwsS3V3Adapter $s3Disk */
+        /** @var AwsS3V3Adapter $s3Disk */
         $s3Disk = Storage::disk('s3');
         $internalUrl = $s3Disk->temporaryUploadUrl(
             $path,

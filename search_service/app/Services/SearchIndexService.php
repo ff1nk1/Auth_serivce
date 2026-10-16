@@ -255,7 +255,6 @@ class SearchIndexService
     }
 
     /**
-     * @param  mixed  $attributes
      * @return list<array{name: string, value: string}>
      */
     private function normalizeAttributes(mixed $attributes): array

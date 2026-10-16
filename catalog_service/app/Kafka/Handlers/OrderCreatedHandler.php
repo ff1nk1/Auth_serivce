@@ -2,7 +2,9 @@
 
 namespace App\Kafka\Handlers;
 
-use App\Models\OutboxEvent;
+use App\Events\StockChanged;
+use App\Events\StockReservationFailed;
+use App\Events\StockReserved;
 use App\Models\Stock;
 use App\Services\SagaStepGuard;
 use Illuminate\Support\Facades\DB;
@@ -94,20 +96,12 @@ class OrderCreatedHandler
                     $reservedPayload['saga_id'] = $sagaId;
                 }
 
-                OutboxEvent::create([
-                    'topic' => 'stock.events',
-                    'event_type' => 'stock.reserved',
-                    'payload' => $reservedPayload,
-                ]);
+                event(new StockReserved($reservedPayload));
 
                 Log::info("Товар для заказа #{$orderId} зарезервирован. Событие отправлено в Outbox.");
 
                 foreach ($stockChangedEvents as $changedEvent) {
-                    OutboxEvent::create([
-                        'topic' => 'catalog.events',
-                        'event_type' => 'stock.changed',
-                        'payload' => $changedEvent,
-                    ]);
+                    event(new StockChanged($changedEvent));
                 }
             } else {
                 DB::rollBack();
@@ -121,11 +115,7 @@ class OrderCreatedHandler
                     $failedPayload['saga_id'] = $sagaId;
                 }
 
-                OutboxEvent::create([
-                    'topic' => 'stock.events',
-                    'event_type' => 'stock.reservation_failed',
-                    'payload' => $failedPayload,
-                ]);
+                event(new StockReservationFailed($failedPayload));
                 Log::warning("Недостаточно товара на складе для заказа #{$orderId}. Событие reservation_failed отправлено в Outbox.");
 
                 $stepStatus = SagaStepGuard::STATUS_FAILED;

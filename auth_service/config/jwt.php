@@ -50,6 +50,3 @@ return [
         FILTER_VALIDATE_BOOLEAN
     ),
 ];
-
-
-

@@ -6,7 +6,6 @@ use App\Models\User;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redis;
 use Throwable;
 
 class JwtService
@@ -17,8 +16,9 @@ class JwtService
 
     private int $ttl;
 
-    public function __construct()
-    {
+    public function __construct(
+        private TokenBlacklistService $blacklist
+    ) {
         $this->secret = (string) config('jwt.secret');
         $this->algorithm = (string) config('jwt.algorithm', 'HS256');
         $this->ttl = (int) config('jwt.ttl', 15) * 60;
@@ -78,10 +78,7 @@ class JwtService
                 return null;
             }
 
-            $blacklistKey = "jwt:blacklist:{$payload->jti}";
-            $isBlacklisted = Redis::exists($blacklistKey);
-
-            if ($isBlacklisted) {
+            if ($this->blacklist->isJwtBlacklisted($payload->jti)) {
                 return null;
             }
 
@@ -119,11 +116,7 @@ class JwtService
                 return;
             }
 
-            Redis::setex(
-                "jwt:blacklist:{$payload->jti}",
-                $remainingTtl,
-                '1'
-            );
+            $this->blacklist->blacklistJwt($payload->jti, $remainingTtl);
         } catch (Throwable) {
             /*
              * Битый токен — блэклистить нечего.

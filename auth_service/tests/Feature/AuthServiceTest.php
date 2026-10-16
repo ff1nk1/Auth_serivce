@@ -30,8 +30,8 @@ class AuthServiceTest extends TestCase
         Config::set('jwt.ttl', 15);
         Config::set('jwt.refresh_ttl', 100);
 
-        $this->jwtService = new JwtService;
-        $this->authService = new AuthService($this->jwtService);
+        $this->jwtService = app(JwtService::class);
+        $this->authService = app(AuthService::class);
 
         Redis::connection()->select((int) config('database.redis.default.database', 15));
         Redis::flushdb();

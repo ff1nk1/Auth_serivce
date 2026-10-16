@@ -2,11 +2,11 @@
 
 namespace App\Kafka\Handlers;
 
+use App\Events\UserEventMovedToDlq;
 use App\Models\EmailLog;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Log;
 use Junges\Kafka\Contracts\ConsumerMessage;
-use Junges\Kafka\Facades\Kafka;
 
 class UserEventsHandler
 {
@@ -38,7 +38,7 @@ class UserEventsHandler
         $result = $this->notificationService->sendWelcomeMailWithRetry($body, $eventType);
 
         // Если все попытки исчерпаны — отправляем в DLQ
-        if (!$result['isSent']) {
+        if (! $result['isSent']) {
             $this->sendToDlq($message, $result['emailLog'], $result['lastError']);
         }
     }
@@ -48,31 +48,12 @@ class UserEventsHandler
      */
     private function sendToDlq(ConsumerMessage $message, EmailLog $emailLog, string $errorMessage): void
     {
-        // Помечаем документ в MongoDB
         $emailLog->update([
-            'status'        => 'failed',
-            'moved_to_dlq'  => true,
+            'status' => 'failed',
+            'moved_to_dlq' => true,
             'error_message' => $errorMessage,
         ]);
 
-        try {
-            Kafka::publish(config('kafka.brokers', 'kafka:29092'))
-                ->onTopic('user.events.dlq')
-                ->withKafkaKey((string) $message->getKey())
-                ->withHeaders(array_merge($message->getHeaders() ?? [], [
-                    'dlq-reason' => $errorMessage,
-                    'dlq-failed-at' => now()->toIso8601String(),
-                ]))
-                ->withBody($message->getBody())
-                ->send();
-
-            Log::error("Сообщение не обработано и перенаправлено в DLQ (user.events.dlq)", [
-                'email' => $emailLog->email,
-                'error' => $errorMessage,
-            ]);
-
-        } catch (\Throwable $e) {
-            Log::critical('Не удалось опубликовать сообщение в DLQ топик: ' . $e->getMessage());
-        }
+        event(new UserEventMovedToDlq($message, $errorMessage, (string) $emailLog->email));
     }
 }

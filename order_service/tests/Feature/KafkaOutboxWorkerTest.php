@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Console\Commands\KafkaOutboxWorker;
 use App\Models\OutboxEvent;
+use App\Services\OutboxWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Junges\Kafka\Facades\Kafka;
@@ -40,7 +41,7 @@ class KafkaOutboxWorkerTest extends TestCase
     {
         Kafka::fake();
 
-        app(\App\Services\OutboxWriter::class)->write('order.events', 'order.paid', [
+        app(OutboxWriter::class)->write('order.events', 'order.paid', [
             'order_id' => 99,
             'email' => 'a@example.com',
         ]);

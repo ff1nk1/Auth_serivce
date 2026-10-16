@@ -3,6 +3,7 @@
 namespace Tests\Concerns;
 
 use Mockery;
+use Mockery\MockInterface;
 use OpenSearch\Client;
 use OpenSearch\Namespaces\IndicesNamespace;
 
@@ -16,7 +17,7 @@ trait CapturesOpenSearchRequests
 
     /**
      * @param  array<string, mixed>|null  $searchResponse
-     * @return Client&\Mockery\MockInterface
+     * @return Client&MockInterface
      */
     protected function mockOpenSearchClient(?array $searchResponse = null, bool $indicesExist = true): Client
     {

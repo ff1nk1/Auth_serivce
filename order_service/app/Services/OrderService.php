@@ -2,6 +2,10 @@
 
 namespace App\Services;
 
+use App\Events\OrderCancelled;
+use App\Events\OrderCreated;
+use App\Events\OrderShipped;
+use App\Events\StockReleaseRequested;
 use App\Models\Order;
 use App\Models\ProductSnapshot;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -15,7 +19,6 @@ class OrderService
 {
     public function __construct(
         private IdempotencyService $idempotency,
-        private OutboxWriter $outbox,
         private SagaStepGuard $saga,
     ) {}
 
@@ -132,11 +135,9 @@ class OrderService
             $order->status = 'cancelled';
             $order->save();
 
-            $this->outbox->write(
-                'order.events',
-                'order.cancelled',
+            event(new OrderCancelled(
                 $this->notificationPayload($order, ['reason' => 'user_cancelled'])
-            );
+            ));
 
             if ($previousStatus === 'awaiting_payment') {
                 $releasePayload = [
@@ -147,7 +148,7 @@ class OrderService
                     $releasePayload['saga_id'] = $order->saga_id;
                 }
 
-                $this->outbox->write('order.events', 'stock.release_requested', $releasePayload);
+                event(new StockReleaseRequested($releasePayload));
                 $wroteRelease = true;
             }
 
@@ -188,11 +189,7 @@ class OrderService
             $order->status = 'shipped';
             $order->save();
 
-            $this->outbox->write(
-                'order.events',
-                'order.shipped',
-                $this->notificationPayload($order)
-            );
+            event(new OrderShipped($this->notificationPayload($order)));
 
             return $order->load(['items.productSnapshot', 'payments']);
         });
@@ -341,14 +338,14 @@ class OrderService
                 $order->items()->create($line);
             }
 
-            $this->outbox->write('order.events', 'order.created', [
+            event(new OrderCreated([
                 'saga_id' => $sagaId,
                 'order_id' => $order->id,
                 'user_id' => $userId,
                 'total_amount' => (string) $order->total_amount,
                 'created_at' => $order->created_at->toIso8601String(),
                 'items' => $outboxItems,
-            ]);
+            ]));
 
             return $order->load(['items.productSnapshot', 'payments']);
         });

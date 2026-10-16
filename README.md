@@ -4,6 +4,7 @@
 ./scripts/bootstrap.sh
 docker compose up -d --build
 ./scripts/test-all.sh
+./scripts/lint-all.sh
 ./scripts/demo-prep.sh
 ```
 

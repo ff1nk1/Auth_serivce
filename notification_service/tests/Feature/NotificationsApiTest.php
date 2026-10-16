@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\OrderConfirmedMail;
 use App\Mail\OrderPaidMail;
 use App\Models\EmailLog;
+use App\Services\NotificationService;
 use Illuminate\Mail\PendingMail;
 use Illuminate\Support\Facades\Mail;
 use Mockery;
@@ -154,7 +155,7 @@ class NotificationsApiTest extends TestCase
 
     public function test_resend_returns_400_when_smtp_fails(): void
     {
-        $maxRetries = \App\Services\NotificationService::MAX_RETRIES;
+        $maxRetries = NotificationService::MAX_RETRIES;
 
         $pendingMailMock = Mockery::mock(PendingMail::class);
         $pendingMailMock->shouldReceive('send')

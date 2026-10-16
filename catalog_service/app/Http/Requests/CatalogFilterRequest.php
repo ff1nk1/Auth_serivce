@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -19,12 +20,12 @@ class CatalogFilterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'search'    => 'nullable|string|max:100',
+            'search' => 'nullable|string|max:100',
             'min_price' => 'nullable|numeric|min:0',
             // max_price не может быть меньше min_price
             'max_price' => 'nullable|numeric|min:0|gte:min_price',
-            'status'    => 'nullable|string|in:in_stock',
-            'sort'      => 'nullable|string|in:new,price_asc,price_desc',
+            'status' => 'nullable|string|in:in_stock',
+            'sort' => 'nullable|string|in:new,price_asc,price_desc',
         ];
     }
 }

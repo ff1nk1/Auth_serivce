@@ -2,23 +2,24 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
 use App\Kafka\Handlers\UserEventsHandler;
+use Illuminate\Console\Command;
 use Junges\Kafka\Facades\Kafka;
 
 class KafkaConsumeUserEvents extends Command
 {
     protected $signature = 'kafka:consume:user-events';
+
     protected $description = 'Консьюмер для топика user.events';
 
     public function handle(): int
     {
-        $this->info("Запуск консьюмера для топика user.events...");
+        $this->info('Запуск консьюмера для топика user.events...');
 
         $consumer = Kafka::consumer(['user.events'])
             ->withBrokers(config('kafka.brokers', 'kafka:29092'))
             ->withConsumerGroupId('notification-service-consumers-v1')
-            ->withHandler(app(UserEventsHandler::class))            
+            ->withHandler(app(UserEventsHandler::class))
             ->withAutoCommit()
             ->withOptions([
                 'auto.offset.reset' => 'earliest',
@@ -28,7 +29,7 @@ class KafkaConsumeUserEvents extends Command
         try {
             $consumer->consume();
         } catch (\Throwable $e) {
-            $this->error("ОШИБКА KAFKA: " . $e->getMessage());
+            $this->error('ОШИБКА KAFKA: '.$e->getMessage());
         }
 
         return self::SUCCESS;

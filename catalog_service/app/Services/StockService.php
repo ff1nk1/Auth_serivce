@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\OutboxEvent;
+use App\Events\StockChanged;
 use App\Models\Stock;
 use Illuminate\Support\Facades\DB;
 
@@ -38,14 +38,10 @@ class StockService
 
     private function queueStockChanged(Stock $stock): void
     {
-        OutboxEvent::create([
-            'topic' => 'catalog.events',
-            'event_type' => 'stock.changed',
-            'payload' => [
-                'product_id' => $stock->product_id,
-                'store_id' => $stock->store_id,
-                'quantity' => $stock->quantity,
-            ],
-        ]);
+        event(new StockChanged([
+            'product_id' => $stock->product_id,
+            'store_id' => $stock->store_id,
+            'quantity' => $stock->quantity,
+        ]));
     }
 }

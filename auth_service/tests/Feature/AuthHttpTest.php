@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Auth\AuthService;
+use App\Services\Auth\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
 use Junges\Kafka\Facades\Kafka;
@@ -134,14 +136,14 @@ class AuthHttpTest extends TestCase
             ->postJson('/api/logout')
             ->assertOk();
 
-        $jwt = app(\App\Services\Auth\JwtService::class);
+        $jwt = app(JwtService::class);
         $decoded = $jwt->decode($tokens['access_token']);
         $this->assertTrue(
             Redis::exists("jwt:blacklist:{$decoded->jti}") > 0,
             'Access token JTI must be blacklisted after logout'
         );
 
-        $request = \Illuminate\Http\Request::create('/api/user', 'GET');
+        $request = Request::create('/api/user', 'GET');
         $request->headers->set('Authorization', 'Bearer '.$tokens['access_token']);
         $this->assertNull(
             $jwt->userFromRequest($request),
@@ -149,8 +151,3 @@ class AuthHttpTest extends TestCase
         );
     }
 }
-
-
-
-
-

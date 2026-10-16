@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OutboxEvent;
 use App\Models\Payment;
 use App\Models\ProductSnapshot;
+use App\Services\SagaStepGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\Concerns\UsesFakeStripe;
@@ -128,7 +129,7 @@ class PaymentServiceWebhookUnitTest extends TestCase
 
         $this->assertSame(
             'done',
-            app(\App\Services\SagaStepGuard::class)->get($order->saga_id, 'stock.release_requested')['status'] ?? null
+            app(SagaStepGuard::class)->get($order->saga_id, 'stock.release_requested')['status'] ?? null
         );
     }
 

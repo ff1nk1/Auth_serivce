@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Auth\AuthService;
+use App\Services\Auth\JwtService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
@@ -113,19 +115,18 @@ class CatalogAdminPanelProxyTest extends TestCase
         $response->assertCookieExpired('access_token');
         $response->assertCookieExpired('refresh_token');
 
-        $jwt = app(\App\Services\Auth\JwtService::class);
+        $jwt = app(JwtService::class);
         $decoded = $jwt->decode($tokens['access_token']);
         $this->assertTrue(
             Redis::exists("jwt:blacklist:{$decoded->jti}") > 0,
             'Access token JTI must be blacklisted after admin-catalog logout'
         );
 
-        $probe = \Illuminate\Http\Request::create('/api/user', 'GET');
+        $probe = Request::create('/api/user', 'GET');
         $probe->headers->set('Authorization', 'Bearer '.$tokens['access_token']);
         $this->assertNull(
             $jwt->userFromRequest($probe),
             'Blacklisted access token must not resolve a user'
         );
     }
-
 }
